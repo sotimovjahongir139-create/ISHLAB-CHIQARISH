@@ -46,13 +46,11 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
       }}
     >
       {/* Logo */}
-      <Box sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Factory sx={{ color: '#fff', fontSize: 20 }} />
-        </Box>
-        <Box>
-          <Typography variant="body1" fontWeight={700} lineHeight={1.2} letterSpacing={1}>ARKON</Typography>
-        </Box>
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box component="img" src="/logo.svg" alt="ARKON" sx={{ width: 38, height: 38 }} />
+        <Typography variant="body1" fontWeight={800} letterSpacing={2} sx={{ color: '#fff', fontSize: '1.1rem' }}>
+          ARKON
+        </Typography>
       </Box>
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />

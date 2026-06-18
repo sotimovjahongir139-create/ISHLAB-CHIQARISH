@@ -2,7 +2,7 @@ import {
   Box, Card, CardContent, TextField, Button,
   Typography, InputAdornment, IconButton, CircularProgress, Alert,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Factory } from '@mui/icons-material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -42,14 +42,8 @@ const Login = () => {
         <CardContent sx={{ p: 4 }}>
           {/* Logo */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box sx={{
-              width: 56, height: 56, borderRadius: 3,
-              bgcolor: 'primary.main', display: 'inline-flex',
-              alignItems: 'center', justifyContent: 'center', mb: 2,
-            }}>
-              <Factory sx={{ color: '#fff', fontSize: 28 }} />
-            </Box>
-            <Typography variant="h5" fontWeight={700} color="primary" letterSpacing={2}>ARKON</Typography>
+            <Box component="img" src="/logo.svg" alt="ARKON" sx={{ width: 72, height: 72, mb: 1.5 }} />
+            <Typography variant="h5" fontWeight={800} color="primary" letterSpacing={2}>ARKON</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               Hisobingizga kiring
             </Typography>

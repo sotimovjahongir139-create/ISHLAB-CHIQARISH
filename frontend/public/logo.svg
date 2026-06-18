@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Blue circle -->
+  <circle cx="50" cy="50" r="50" fill="#4A7CC7"/>
+  <!-- White A shape with left-side notch, inner hollow via evenodd -->
+  <path fill="white" fill-rule="evenodd" d="
+    M 50,13
+    L 83,75
+    L 63,75
+    L 50,36
+    L 37,75
+    L 17,75
+    L 32,51
+    Z
+    M 50,34
+    L 67,72
+    L 33,72
+    Z
+  "/>
+</svg>
