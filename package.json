@@ -1,0 +1,29 @@
+{
+  "name": "manufacturing-platform",
+  "version": "1.0.0",
+  "description": "Ishlab chiqarish boshqaruv platformasi",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=frontend",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:migrate:prod": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:seed": "node prisma/seed.js",
+    "db:studio": "prisma studio --schema=prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prisma": "^5.20.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "bcryptjs": "^2.4.3",
+    "dunder-proto": "^1.0.1"
+  }
+}

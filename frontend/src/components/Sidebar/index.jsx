@@ -1,0 +1,105 @@
+import {
+  Drawer, List, ListItemButton, ListItemIcon, ListItemText,
+  Box, Typography, Divider, Avatar, Tooltip,
+} from '@mui/material';
+import {
+  Dashboard, Factory, VerifiedUser, AccessTime,
+  Inventory, People, Build, Assessment,
+  AdminPanelSettings, Settings, DeleteSweep, ColorLens,
+} from '@mui/icons-material';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { SIDEBAR_WIDTH } from '../../constants';
+
+const NAV = [
+  { label: 'Bosh sahifa', icon: <Dashboard />, path: '/' },
+  { label: 'Ishlab chiqarish', icon: <Factory />, path: '/production' },
+  { label: 'Sifat nazorati', icon: <VerifiedUser />, path: '/quality' },
+  { label: 'Toshlanishlar', icon: <AccessTime />, path: '/downtime' },
+  { label: 'Xomashyo', icon: <Inventory />, path: '/materials' },
+  { label: 'Atxot', icon: <DeleteSweep />, path: '/waste' },
+  { label: 'Kraska', icon: <ColorLens />, path: '/paint' },
+  { label: 'Xodimlar', icon: <People />, path: '/employees' },
+  { label: 'Uskunalar', icon: <Build />, path: '/equipment' },
+  { label: 'Hisobotlar', icon: <Assessment />, path: '/reports' },
+  { divider: true },
+  { label: 'Boshqaruv', icon: <AdminPanelSettings />, path: '/administration', roles: ['super_admin', 'admin'] },
+  { label: 'Sozlamalar', icon: <Settings />, path: '/settings' },
+];
+
+const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { user, hasRole } = useAuth();
+
+  const handleNav = (path) => { navigate(path); if (variant === 'temporary') onClose?.(); };
+
+  return (
+    <Drawer
+      variant={variant}
+      open={variant === 'temporary' ? open : true}
+      onClose={onClose}
+      sx={{
+        width: SIDEBAR_WIDTH,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#0D2137', color: '#fff' },
+      }}
+    >
+      {/* Logo */}
+      <Box sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Factory sx={{ color: '#fff', fontSize: 20 }} />
+        </Box>
+        <Box>
+          <Typography variant="body1" fontWeight={700} lineHeight={1.2} letterSpacing={1}>ARKON</Typography>
+        </Box>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+
+      {/* Nav */}
+      <List sx={{ px: 1, py: 1, flexGrow: 1 }}>
+        {NAV.map((item, i) => {
+          if (item.divider) return <Divider key={i} sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />;
+          if (item.roles && !hasRole(...item.roles)) return null;
+
+          const active = item.path === '/'
+            ? pathname === '/'
+            : pathname.startsWith(item.path);
+
+          return (
+            <ListItemButton
+              key={item.path}
+              selected={active}
+              onClick={() => handleNav(item.path)}
+              sx={{
+                borderRadius: 2, mb: 0.5, py: 0.9,
+                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+                bgcolor: active ? 'rgba(25,118,210,0.35) !important' : 'transparent',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.07) !important', color: '#fff' },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 600 : 400 }} />
+            </ListItemButton>
+          );
+        })}
+      </List>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+
+      {/* User */}
+      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: 14 }}>
+          {user?.firstName?.[0]}{user?.lastName?.[0]}
+        </Avatar>
+        <Box sx={{ overflow: 'hidden' }}>
+          <Typography variant="body2" fontWeight={600} noWrap>{user?.firstName} {user?.lastName}</Typography>
+          <Typography variant="caption" sx={{ opacity: 0.6 }} noWrap>{user?.role?.displayName}</Typography>
+        </Box>
+      </Box>
+    </Drawer>
+  );
+};
+
+export default Sidebar;
