@@ -94,6 +94,8 @@ const Dashboard = () => {
   const [deptComp, setDeptComp] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [lineTab, setLineTab] = useState('pu');
+
   // Independent period selectors for PU and TEP charts
   const [puPeriod, setPuPeriod] = useState(7);
   const [tepPeriod, setTepPeriod] = useState(7);
@@ -360,24 +362,34 @@ const Dashboard = () => {
         <Grid item xs={12} lg={8}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>Liniyalar bo'yicha PU vs TEP ({days} kun)</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6">Liniyalar bo'yicha ({days} kun)</Typography>
+                <ToggleButtonGroup
+                  size="small" exclusive value={lineTab}
+                  onChange={(_, v) => { if (v !== null) setLineTab(v); }}
+                  sx={{ height: 28 }}
+                >
+                  <ToggleButton value="pu" sx={{ px: 1.5, py: 0, fontSize: 12, fontWeight: 700 }}>PU</ToggleButton>
+                  <ToggleButton value="tep" sx={{ px: 1.5, py: 0, fontSize: 12, fontWeight: 700 }}>TEP</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
               <TableContainer>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
                       <TableCell>Liniya</TableCell>
-                      <TableCell align="right">Reja (TEP)</TableCell>
-                      <TableCell align="right">Haqiqiy (PU)</TableCell>
-                      <TableCell align="right">Yaroqli</TableCell>
-                      <TableCell align="right">Samaradorlik</TableCell>
+                      <TableCell align="right">Reja</TableCell>
+                      <TableCell align="right">Fakt</TableCell>
+                      {lineTab === 'pu' && <TableCell align="right">Yaroqli</TableCell>}
+                      {lineTab === 'pu' && <TableCell align="right">Samaradorlik</TableCell>}
                       <TableCell>Bajarish %</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}><Skeleton /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={lineTab === 'pu' ? 6 : 4} align="center" sx={{ py: 3 }}><Skeleton /></TableCell></TableRow>
                     ) : deptComp.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>Ma'lumot yo'q</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={lineTab === 'pu' ? 6 : 4} align="center" sx={{ py: 3, color: 'text.secondary' }}>Ma'lumot yo'q</TableCell></TableRow>
                     ) : deptComp.map((row) => (
                       <TableRow key={row.lineId} hover>
                         <TableCell>
@@ -386,14 +398,18 @@ const Dashboard = () => {
                         </TableCell>
                         <TableCell align="right">{row.planned.toLocaleString()}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 600 }}>{row.produced.toLocaleString()}</TableCell>
-                        <TableCell align="right" sx={{ color: 'success.main' }}>{row.good.toLocaleString()}</TableCell>
-                        <TableCell align="right">
-                          <Chip
-                            label={`${row.efficiency}%`}
-                            size="small"
-                            color={row.efficiency >= 90 ? 'success' : row.efficiency >= 70 ? 'warning' : 'error'}
-                          />
-                        </TableCell>
+                        {lineTab === 'pu' && (
+                          <TableCell align="right" sx={{ color: 'success.main' }}>{row.good.toLocaleString()}</TableCell>
+                        )}
+                        {lineTab === 'pu' && (
+                          <TableCell align="right">
+                            <Chip
+                              label={`${row.efficiency}%`}
+                              size="small"
+                              color={row.efficiency >= 90 ? 'success' : row.efficiency >= 70 ? 'warning' : 'error'}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell sx={{ minWidth: 160 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <LinearProgress
