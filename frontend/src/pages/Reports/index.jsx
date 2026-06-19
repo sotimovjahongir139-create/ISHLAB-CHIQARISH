@@ -9,9 +9,9 @@ import {
   FileDownload, DateRange,
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
-  Close, Visibility,
+  Close, Visibility, Assessment,
 } from '@mui/icons-material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -745,24 +745,31 @@ const ReportCard = ({ def, selected, onSelect }) => {
     <Card
       sx={{
         height: '100%', display: 'flex', flexDirection: 'column',
-        outline: selected ? '2px solid' : 'none',
-        outlineColor: selected ? `${def.color}.main` : 'transparent',
-        cursor: 'pointer',
-        transition: 'box-shadow 0.15s',
-        '&:hover': { boxShadow: 4 },
+        borderTop: '3px solid',
+        borderTopColor: selected ? `${def.color}.main` : 'transparent',
+        boxShadow: selected ? 3 : 1,
+        transition: 'all 0.18s ease',
+        '&:hover': { boxShadow: 4, borderTopColor: `${def.color}.light` },
       }}
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
           <Box sx={{
-            width: 42, height: 42, borderRadius: 2,
-            bgcolor: `${def.color}.main`, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', color: '#fff',
-            flexShrink: 0,
+            width: 44, height: 44, borderRadius: 2,
+            background: selected
+              ? `linear-gradient(135deg, var(--mui-palette-${def.color}-dark, #1565C0), var(--mui-palette-${def.color}-main, #1976D2))`
+              : `${def.color}.main`,
+            bgcolor: `${def.color}.main`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', flexShrink: 0,
+            boxShadow: selected ? 2 : 0,
           }}>
             {def.icon}
           </Box>
-          <Typography variant="body1" fontWeight={600}>{def.label}</Typography>
+          <Box>
+            <Typography variant="body1" fontWeight={700} lineHeight={1.2}>{def.label}</Typography>
+            {selected && <Typography variant="caption" color={`${def.color}.main`} fontWeight={600}>Ko'rinmoqda</Typography>}
+          </Box>
         </Box>
 
         {def.hasPuTep && (
@@ -811,21 +818,34 @@ const ReportCard = ({ def, selected, onSelect }) => {
 // ─── main page ───────────────────────────────────────────────────────────────
 
 const Reports = () => {
-  const [selected, setSelected] = useState(null); // { key, days }
+  const [selected, setSelected] = useState(null);
+  const panelRef = useRef(null);
 
   const handleSelect = (key, days) => {
     setSelected((prev) => (prev?.key === key ? null : { key, days }));
   };
 
+  // Scroll dashboard panel into view when a card is opened
+  useEffect(() => {
+    if (selected && panelRef.current) {
+      setTimeout(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
+  }, [selected?.key]);
+
   const selectedDef = selected ? REPORT_DEFS.find((d) => d.key === selected.key) : null;
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4">Hisobotlar markazi</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Excel va PDF formatlarida hisobotlar yaratish — PU (haqiqiy) yoki TEP (reja) bo'yicha
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+        <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+          <Assessment />
+        </Box>
+        <Box>
+          <Typography variant="h4">Hisobotlar markazi</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Ko'rish tugmasini bosib tegishli dashboard — Excel/PDF eksport
+          </Typography>
+        </Box>
       </Box>
 
       <Grid container spacing={2.5}>
@@ -843,29 +863,33 @@ const Reports = () => {
       {/* Dashboard panel */}
       {selected && selectedDef && (
         <Paper
+          ref={panelRef}
           elevation={0}
           sx={{
-            mt: 3, p: 3, border: '1px solid', borderColor: 'divider',
+            mt: 3, p: 3,
+            border: '1px solid', borderColor: `${selectedDef.color}.200`,
+            borderTop: '3px solid', borderTopColor: `${selectedDef.color}.main`,
             borderRadius: 2, bgcolor: 'background.default',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box sx={{
-                width: 36, height: 36, borderRadius: 1.5,
+                width: 40, height: 40, borderRadius: 2,
                 bgcolor: `${selectedDef.color}.main`, display: 'flex',
                 alignItems: 'center', justifyContent: 'center', color: '#fff',
+                boxShadow: 2,
               }}>
                 {selectedDef.icon}
               </Box>
               <Box>
-                <Typography variant="h6" fontWeight={700}>{selectedDef.label} — Dashboard</Typography>
+                <Typography variant="h6" fontWeight={700}>{selectedDef.label}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   {selected.days === 1 ? 'Bugungi' : selected.days === 7 ? 'Haftalik' : selected.days === 30 ? 'Oylik' : `${selected.days} kunlik`} ko'rsatkichlar
                 </Typography>
               </Box>
             </Box>
-            <IconButton size="small" onClick={() => setSelected(null)}>
+            <IconButton size="small" onClick={() => setSelected(null)} sx={{ color: 'text.secondary' }}>
               <Close fontSize="small" />
             </IconButton>
           </Box>

@@ -71,14 +71,22 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               selected={active}
               onClick={() => handleNav(item.path)}
               sx={{
-                borderRadius: 2, mb: 0.5, py: 0.9,
-                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
-                bgcolor: active ? 'rgba(25,118,210,0.35) !important' : 'transparent',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.07) !important', color: '#fff' },
+                borderRadius: 1.5, mb: 0.5, py: 0.85,
+                pl: 1.5,
+                color: active ? '#fff' : 'rgba(255,255,255,0.6)',
+                bgcolor: active ? 'rgba(25,118,210,0.28) !important' : 'transparent',
+                borderLeft: '3px solid',
+                borderColor: active ? 'primary.light' : 'transparent',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.07) !important',
+                  color: '#fff',
+                  borderColor: 'rgba(255,255,255,0.3)',
+                },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 600 : 400 }} />
+              <ListItemIcon sx={{ minWidth: 34, color: 'inherit', opacity: active ? 1 : 0.75 }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 600 : 400, letterSpacing: active ? 0.2 : 0 }} />
             </ListItemButton>
           );
         })}

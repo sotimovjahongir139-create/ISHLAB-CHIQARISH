@@ -351,7 +351,6 @@ const Materials = () => {
             <Grid item xs={4}><TextField label="Min zaxira" type="number" size="small" fullWidth {...Mf('minStock')} /></Grid>
             <Grid item xs={4}><TextField label="Max zaxira" type="number" size="small" fullWidth {...Mf('maxStock')} /></Grid>
             <Grid item xs={4}><TextField label="Joriy zaxira" type="number" size="small" fullWidth {...Mf('currentStock')} /></Grid>
-            <Grid item xs={6}><TextField label="Narx/birlik (so'm)" type="number" size="small" fullWidth {...Mf('unitCost')} /></Grid>
             <Grid item xs={12}><TextField label="Tavsif" size="small" fullWidth multiline rows={2} {...Mf('description')} /></Grid>
           </Grid>
         </DialogContent>
