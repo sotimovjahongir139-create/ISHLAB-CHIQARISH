@@ -5,19 +5,45 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 
-const Login = lazy(() => import('../pages/Login'));
-const Dashboard = lazy(() => import('../pages/Dashboard'));
-const Production = lazy(() => import('../pages/Production'));
-const Quality = lazy(() => import('../pages/Quality'));
-const Downtime = lazy(() => import('../pages/Downtime'));
-const Materials = lazy(() => import('../pages/Materials'));
-const Employees = lazy(() => import('../pages/Employees'));
-const Equipment = lazy(() => import('../pages/Equipment'));
-const Reports = lazy(() => import('../pages/Reports'));
-const Settings = lazy(() => import('../pages/Settings'));
-const Administration = lazy(() => import('../pages/Administration'));
-const Waste = lazy(() => import('../pages/Waste'));
-const Paint = lazy(() => import('../pages/Paint'));
+// Wraps lazy() so that a failed dynamic import (stale chunk after deployment)
+// triggers a one-time page reload. The sessionStorage flag prevents an infinite
+// reload loop if the chunk is genuinely missing (not just stale).
+const safeImport = (importer) =>
+  lazy(async () => {
+    try {
+      return await importer();
+    } catch (err) {
+      const isChunkError = /loading.*chunk|dynamically imported module|failed to fetch/i.test(
+        err?.message || String(err)
+      );
+      if (isChunkError && !sessionStorage.getItem('chunk_reload_guard')) {
+        sessionStorage.setItem('chunk_reload_guard', '1');
+        window.location.reload();
+        return new Promise(() => {}); // suspend until reload completes
+      }
+      throw err;
+    }
+  });
+
+// Clear the reload guard once the app bootstraps successfully so that future
+// chunk errors (e.g. after a second deployment) can still trigger a reload.
+if (sessionStorage.getItem('chunk_reload_guard')) {
+  sessionStorage.removeItem('chunk_reload_guard');
+}
+
+const Login         = safeImport(() => import('../pages/Login'));
+const Dashboard     = safeImport(() => import('../pages/Dashboard'));
+const Production    = safeImport(() => import('../pages/Production'));
+const Quality       = safeImport(() => import('../pages/Quality'));
+const Downtime      = safeImport(() => import('../pages/Downtime'));
+const Materials     = safeImport(() => import('../pages/Materials'));
+const Employees     = safeImport(() => import('../pages/Employees'));
+const Equipment     = safeImport(() => import('../pages/Equipment'));
+const Reports       = safeImport(() => import('../pages/Reports'));
+const Settings      = safeImport(() => import('../pages/Settings'));
+const Administration = safeImport(() => import('../pages/Administration'));
+const Waste         = safeImport(() => import('../pages/Waste'));
+const Paint         = safeImport(() => import('../pages/Paint'));
 
 const Loading = () => (
   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -48,50 +74,17 @@ export const router = createBrowserRouter([
     element: <PrivateRoute element={<Layout />} />,
     children: [
       { index: true, element: <Wrap element={<Dashboard />} /> },
-      {
-        path: 'production',
-        element: <Guarded element={<Production />} permission="production:read" />,
-      },
-      {
-        path: 'quality',
-        element: <Guarded element={<Quality />} permission="quality:read" />,
-      },
-      {
-        path: 'downtime',
-        element: <Guarded element={<Downtime />} permission="downtime:read" />,
-      },
-      {
-        path: 'materials',
-        element: <Guarded element={<Materials />} permission="materials:read" />,
-      },
-      {
-        path: 'employees',
-        element: <Guarded element={<Employees />} permission="employees:read" />,
-      },
-      {
-        path: 'equipment',
-        element: <Guarded element={<Equipment />} permission="equipment:read" />,
-      },
-      {
-        path: 'reports',
-        element: <Guarded element={<Reports />} permission="reports:read" />,
-      },
-      {
-        path: 'settings',
-        element: <Guarded element={<Settings />} roles={['super_admin', 'admin']} />,
-      },
-      {
-        path: 'administration',
-        element: <Guarded element={<Administration />} roles={['super_admin', 'admin']} />,
-      },
-      {
-        path: 'waste',
-        element: <Guarded element={<Waste />} permission="materials:read" />,
-      },
-      {
-        path: 'paint',
-        element: <Guarded element={<Paint />} permission="materials:read" />,
-      },
+      { path: 'production',     element: <Guarded element={<Production />}     permission="production:read" /> },
+      { path: 'quality',        element: <Guarded element={<Quality />}         permission="quality:read" /> },
+      { path: 'downtime',       element: <Guarded element={<Downtime />}        permission="downtime:read" /> },
+      { path: 'materials',      element: <Guarded element={<Materials />}       permission="materials:read" /> },
+      { path: 'employees',      element: <Guarded element={<Employees />}       permission="employees:read" /> },
+      { path: 'equipment',      element: <Guarded element={<Equipment />}       permission="equipment:read" /> },
+      { path: 'reports',        element: <Guarded element={<Reports />}         permission="reports:read" /> },
+      { path: 'settings',       element: <Guarded element={<Settings />}        roles={['super_admin', 'admin']} /> },
+      { path: 'administration', element: <Guarded element={<Administration />}  roles={['super_admin', 'admin']} /> },
+      { path: 'waste',          element: <Guarded element={<Waste />}           permission="materials:read" /> },
+      { path: 'paint',          element: <Guarded element={<Paint />}           permission="materials:read" /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

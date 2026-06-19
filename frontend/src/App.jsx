@@ -8,6 +8,7 @@ import uzLatn from './utils/dayjs-uz';
 import { AuthProvider } from './context/AuthContext';
 import { router } from './routes';
 import theme from './theme';
+import VersionChecker from './components/VersionChecker';
 
 dayjs.locale(uzLatn);
 
@@ -19,6 +20,7 @@ const App = () => (
         <AuthProvider>
           <RouterProvider router={router} />
         </AuthProvider>
+        <VersionChecker />
       </SnackbarProvider>
     </LocalizationProvider>
   </ThemeProvider>

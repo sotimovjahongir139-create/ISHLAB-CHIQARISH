@@ -22,5 +22,8 @@ export default defineConfig(({ mode }) => {
     build: {
       chunkSizeWarningLimit: 1000,
     },
+    define: {
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    },
   };
 });
