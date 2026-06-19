@@ -172,7 +172,7 @@ const Dashboard = () => {
         </FormControl>
       </Box>
 
-      {/* KPI Cards: Ishlab chiqarish, Sifat, OEE, Toshlanishlar, Xodimlar */}
+      {/* KPI Cards: Ishlab chiqarish, Sifat, OEE, To'xtalishlar, Xodimlar */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={6} sm={4} md={2.4}>
           <KPI
@@ -206,7 +206,7 @@ const Dashboard = () => {
         </Grid>
         <Grid item xs={6} sm={4} md={2.4}>
           <KPI
-            title="Toshlanishlar (faol)"
+            title="To'xtalishlar (faol)"
             value={kpis?.activeDowntimes}
             unit="ta"
             icon={<AccessTime fontSize="small" />}
@@ -248,7 +248,7 @@ const Dashboard = () => {
           <Card>
             <CardContent>
               <ChartPeriodHeader
-                title="PU — Haqiqiy natijalar"
+                title="PU — Reja ko'rsatkichlari"
                 period={puPeriod}
                 onChange={setPuPeriod}
               />
@@ -301,11 +301,11 @@ const Dashboard = () => {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>Toshlanish sabablari ({days} kun)</Typography>
+              <Typography variant="h6" sx={{ mb: 2 }}>To'xtalish sabablari ({days} kun)</Typography>
               {loading ? <Skeleton variant="rectangular" height={220} /> : pieData.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                   <CheckCircle sx={{ fontSize: 40, color: 'success.light', mb: 1 }} />
-                  <Typography>Toshlanish yo'q</Typography>
+                  <Typography>To'xtalish yo'q</Typography>
                 </Box>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>

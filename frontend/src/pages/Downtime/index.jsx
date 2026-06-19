@@ -101,7 +101,7 @@ const Downtime = () => {
         ...form,
         startTime: form.startTime ? new Date(form.startTime).toISOString() : new Date().toISOString(),
       });
-      enqueueSnackbar('Toshlanish qayd etildi', { variant: 'success' });
+      enqueueSnackbar("To'xtalish qayd etildi", { variant: 'success' });
       setCreateDialog(false);
       setForm(EMPTY_FORM);
       await load();
@@ -113,7 +113,7 @@ const Downtime = () => {
     setSaving(true);
     try {
       await svc.resolveDowntime(resolveDialog.item.id, resolveDialog.endTime || undefined);
-      enqueueSnackbar('Toshlanish yopildi', { variant: 'success' });
+      enqueueSnackbar("To'xtalish yopildi", { variant: 'success' });
       setResolveDialog({ open: false, item: null, endTime: '' });
       load();
     } catch (err) { enqueueSnackbar(err.response?.data?.message || 'Xatolik', { variant: 'error' }); }
@@ -138,7 +138,7 @@ const Downtime = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <AccessTime sx={{ fontSize: 30, color: 'warning.main' }} />
           <Box>
-            <Typography variant="h4">Toshlanishlar</Typography>
+            <Typography variant="h4">To'xtalishlar</Typography>
             <Typography variant="body2" color="text.secondary">Ishlab chiqarish to'xtalishi qayd etish</Typography>
           </Box>
         </Box>
@@ -146,7 +146,7 @@ const Downtime = () => {
           <Button startIcon={<Refresh />} onClick={load}>Yangilash</Button>
           {can('downtime:create') && (
             <Button variant="contained" color="warning" startIcon={<Add />} onClick={() => { setForm(EMPTY_FORM); setCreateDialog(true); }}>
-              Toshlanish qo'shish
+              To'xtalish qo'shish
             </Button>
           )}
         </Box>
@@ -342,7 +342,7 @@ const Downtime = () => {
 
       {/* Create dialog */}
       <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Toshlanish qayd etish</DialogTitle>
+        <DialogTitle>To'xtalish qayd etish</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
@@ -401,7 +401,7 @@ const Downtime = () => {
 
       {/* Resolve dialog */}
       <Dialog open={resolveDialog.open} onClose={() => setResolveDialog({ open: false, item: null, endTime: '' })} maxWidth="xs" fullWidth>
-        <DialogTitle>Toshlanishni yopish</DialogTitle>
+        <DialogTitle>To'xtalishni yopish</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>
             Liniya: <strong>{resolveDialog.item?.productionLine?.name}</strong><br />

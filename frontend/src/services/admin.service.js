@@ -26,6 +26,10 @@ export const createDepartment = (data) => api.post('/admin/departments', data);
 export const updateDepartment = (id, data) => api.put(`/admin/departments/${id}`, data);
 export const deleteDepartment = (id) => api.delete(`/admin/departments/${id}`);
 
+// ── Lookups (material categories, etc.) ────────────────────────────────────
+export const getLookup = (type) => api.get(`/admin/lookups/${type}`);
+export const setLookup = (type, items) => api.put(`/admin/lookups/${type}`, { items });
+
 // ── Audit Logs ─────────────────────────────────────────────────────────────
 export const getAuditLogs = (params) => api.get('/admin/audit-logs', { params });
 export const getActivityStats = (days) => api.get('/admin/audit-logs/stats', { params: { days } });

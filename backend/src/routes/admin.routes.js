@@ -75,6 +75,13 @@ router.put('/departments/:id', requirePermission(PERMISSIONS.DEPARTMENTS_UPDATE)
 router.delete('/departments/:id', requirePermission(PERMISSIONS.DEPARTMENTS_DELETE), deptCtrl.deleteDepartment);
 
 // ──────────────────────────────────────────────────────────────────────────
+// LOOKUP LISTS (material categories, etc.)
+// ──────────────────────────────────────────────────────────────────────────
+const lookupCtrl = require('../controllers/admin/lookup.controller');
+router.get('/lookups/:type', lookupCtrl.getLookup);
+router.put('/lookups/:type', lookupCtrl.setLookup);
+
+// ──────────────────────────────────────────────────────────────────────────
 // AUDIT LOGS (super_admin only)
 // ──────────────────────────────────────────────────────────────────────────
 router.get('/audit-logs', requireRole('super_admin'), requirePermission(PERMISSIONS.AUDIT_READ), auditCtrl.getAuditLogs);

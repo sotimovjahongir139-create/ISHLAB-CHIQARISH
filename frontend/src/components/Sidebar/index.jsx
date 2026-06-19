@@ -15,7 +15,7 @@ const NAV = [
   { label: 'Bosh sahifa', icon: <Dashboard />, path: '/' },
   { label: 'Ishlab chiqarish', icon: <Factory />, path: '/production' },
   { label: 'Sifat nazorati', icon: <VerifiedUser />, path: '/quality' },
-  { label: 'Toshlanishlar', icon: <AccessTime />, path: '/downtime' },
+  { label: "To'xtalishlar", icon: <AccessTime />, path: '/downtime' },
   { label: 'Xomashyo', icon: <Inventory />, path: '/materials' },
   { label: 'Atxot', icon: <DeleteSweep />, path: '/waste' },
   { label: 'Kraska', icon: <ColorLens />, path: '/paint' },

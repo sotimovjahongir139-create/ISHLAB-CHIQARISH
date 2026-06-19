@@ -1,6 +1,9 @@
 import api from './api';
 
 export const getLines = (params) => api.get('/production/lines', { params });
+export const createLine = (data) => api.post('/production/lines', data);
+export const updateLine = (id, data) => api.put(`/production/lines/${id}`, data);
+export const deleteLine = (id) => api.delete(`/production/lines/${id}`);
 export const getProductModels = () => api.get('/production/models');
 export const getShifts = () => api.get('/production/shifts');
 export const getPlans = (params) => api.get('/production/plans', { params });

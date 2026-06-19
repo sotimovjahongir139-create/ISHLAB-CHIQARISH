@@ -38,7 +38,7 @@ const ENTITY_LABELS = {
   production_fact: 'Ishlab chiqarish natijasi',
   quality_inspections: 'Tekshiruvlar',
   defects: 'Nuqsonlar',
-  downtime: 'Toshlanishlar',
+  downtime: "To'xtalishlar",
   materials: 'Xomashyo',
   material_transactions: 'Xomashyo harakati',
   employees: 'Xodimlar',

@@ -2,7 +2,7 @@ import { Card, CardContent, Typography, Box, List, ListItem, ListItemText } from
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CHART_COLORS } from '../../constants';
 
-const DowntimePieChart = ({ data = [], title = "Toshlanish sabablari" }) => {
+const DowntimePieChart = ({ data = [], title = "To'xtalish sabablari" }) => {
   const chartData = data.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
 
   return (

@@ -10,18 +10,19 @@ import { Add, Refresh, Edit, SwapHoriz, Inventory, Search, Warning } from '@mui/
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/material.service';
+import * as adminSvc from '../../services/admin.service';
 import { TRANSACTION_TYPE } from '../../constants';
 import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
-const CATEGORIES = ['RAW_MATERIAL', 'COMPONENT', 'PACKAGING', 'CONSUMABLE', 'SPARE_PART', 'OTHER'];
-const CATEGORY_UZ = {
-  RAW_MATERIAL: 'Xomashyo', COMPONENT: 'Komponent', PACKAGING: 'Qadoqlash',
-  CONSUMABLE: 'Sarflanadigan', SPARE_PART: 'Ehtiyot qism', OTHER: 'Boshqa',
-};
+const DEFAULT_CATS = [
+  { id: 'RAW_MATERIAL', label: 'Xomashyo' }, { id: 'COMPONENT', label: 'Komponent' },
+  { id: 'PACKAGING', label: 'Qadoqlash' }, { id: 'CONSUMABLE', label: 'Sarflanadigan' },
+  { id: 'SPARE_PART', label: 'Ehtiyot qism' }, { id: 'OTHER', label: 'Boshqa' },
+];
 const UNITS = ['dona', 'kg', 'l', 'm', 'm²', 'm³', 'sm', 'mm', 'g'];
 
-const EMPTY_MAT = { name: '', code: '', unit: 'dona', category: 'RAW_MATERIAL', minStock: '', maxStock: '', currentStock: '', unitCost: '', description: '' };
+const EMPTY_MAT = { name: '', code: '', unit: 'dona', category: '', minStock: '', maxStock: '', currentStock: '', unitCost: '', description: '' };
 const EMPTY_TX = { type: 'IN', quantity: '', unitCost: '', transactionDate: '', reference: '', notes: '' };
 
 const StockBar = ({ current, min, max }) => {
@@ -43,6 +44,7 @@ const Materials = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { can } = usePermission();
   const [tab, setTab] = useState(0);
+  const [categories, setCategories] = useState(DEFAULT_CATS);
 
   const [materials, setMaterials] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -83,6 +85,13 @@ const Materials = () => {
     } catch {}
     finally { setLoading(false); }
   }, [selectedMat, page]);
+
+  useEffect(() => {
+    adminSvc.getLookup('material_categories').then((r) => {
+      const items = r.data.data;
+      if (items && items.length > 0) setCategories(items);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (tab === 0) { setPage(0); load(); }
@@ -206,7 +215,7 @@ const Materials = () => {
                   <InputLabel>Kategoriya</InputLabel>
                   <Select value={catFilter} label="Kategoriya" onChange={(e) => { setCatFilter(e.target.value); setPage(0); }}>
                     <MenuItem value="">Barchasi</MenuItem>
-                    {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_UZ[c]}</MenuItem>)}
+                    {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
@@ -259,7 +268,7 @@ const Materials = () => {
                         {m.description && <Typography variant="caption" color="text.secondary">{m.description}</Typography>}
                       </TableCell>
                       <TableCell sx={{ fontFamily: 'monospace' }}>{m.code}</TableCell>
-                      <TableCell><Chip label={CATEGORY_UZ[m.category] || m.category} size="small" variant="outlined" /></TableCell>
+                      <TableCell><Chip label={categories.find((c) => c.id === m.category)?.label || m.category} size="small" variant="outlined" /></TableCell>
                       <TableCell>{m.warehouse?.name || '—'}</TableCell>
                       <TableCell><StockBar current={m.currentStock} min={m.minStock} max={m.maxStock} /> <Typography variant="caption" color="text.secondary">{m.unit}</Typography></TableCell>
                       <TableCell align="right">
@@ -327,7 +336,7 @@ const Materials = () => {
               <FormControl fullWidth size="small">
                 <InputLabel>Kategoriya *</InputLabel>
                 <Select value={matForm.category} label="Kategoriya *" onChange={(e) => setMatForm((f) => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{CATEGORY_UZ[c]}</MenuItem>)}
+                  {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>

@@ -8,6 +8,9 @@ const { PERMISSIONS } = require('../utils/permissions');
 router.use(authenticate);
 
 router.get('/lines', requirePermission(PERMISSIONS.PRODUCTION_READ), ctrl.getLines);
+router.post('/lines', requirePermission(PERMISSIONS.PRODUCTION_CREATE), ctrl.createLine);
+router.put('/lines/:id', requirePermission(PERMISSIONS.PRODUCTION_UPDATE), ctrl.updateLine);
+router.delete('/lines/:id', requirePermission(PERMISSIONS.PRODUCTION_DELETE), ctrl.deleteLine);
 router.get('/models', requirePermission(PERMISSIONS.PRODUCTION_READ), ctrl.getProductModels);
 router.get('/shifts', requirePermission(PERMISSIONS.PRODUCTION_READ), ctrl.getShifts);
 router.get('/plans', requirePermission(PERMISSIONS.PRODUCTION_READ), ctrl.getPlans);

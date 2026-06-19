@@ -18,7 +18,7 @@ const MODULE_LABELS = {
   departments: 'Bo\'limlar',
   production: 'Ishlab chiqarish',
   quality: 'Sifat nazorati',
-  downtime: 'Toshlanishlar',
+  downtime: "To'xtalishlar",
   materials: 'Xomashyo',
   employees: 'Xodimlar',
   equipment: 'Uskunalar',

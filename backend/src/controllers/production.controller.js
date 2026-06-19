@@ -31,6 +31,21 @@ const getLines = async (req, res) => {
   success(res, data);
 };
 
+const createLine = async (req, res) => {
+  const data = await svc.createLine(req.body, req.user.factoryId);
+  created(res, data, 'Liniya qo\'shildi');
+};
+
+const updateLine = async (req, res) => {
+  const data = await svc.updateLine(req.params.id, req.body);
+  success(res, data, 'Liniya yangilandi');
+};
+
+const deleteLine = async (req, res) => {
+  await svc.deleteLine(req.params.id);
+  success(res, null, 'Liniya o\'chirildi');
+};
+
 const getProductModels = async (req, res) => {
   const data = await svc.getProductModels();
   success(res, data);
@@ -46,4 +61,4 @@ const deletePlan = async (req, res) => {
   success(res, null, 'Reja o\'chirildi');
 };
 
-module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, getProductModels, getShifts, deletePlan };
+module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductModels, getShifts, deletePlan };

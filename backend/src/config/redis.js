@@ -8,13 +8,17 @@ function getRedis() {
   if (!redis) {
     redis = new Redis(config.redis.url, {
       password: config.redis.password,
-      retryStrategy: (times) => Math.min(times * 50, 2000),
-      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        if (times > 3) return null; // stop retrying after 3 attempts
+        return Math.min(times * 200, 1000);
+      },
+      maxRetriesPerRequest: 1,
       lazyConnect: true,
+      enableOfflineQueue: false,
     });
 
     redis.on('connect', () => logger.info('Redis connected'));
-    redis.on('error', (err) => logger.error('Redis error:', err.message));
+    redis.on('error', () => {}); // suppress — Redis optional
   }
   return redis;
 }

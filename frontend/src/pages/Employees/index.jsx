@@ -22,7 +22,7 @@ const STATUS_OPTS = ['ACTIVE', 'ON_LEAVE', 'TERMINATED', 'SUSPENDED'];
 const EMPTY_EMP = { firstName: '', lastName: '', middleName: '', birthDate: '', gender: 'MALE', phone: '', address: '', position: '', hireDate: '', salary: '', departmentId: '', status: 'ACTIVE' };
 const EMPTY_ATT = { employeeId: '', date: '', status: 'PRESENT', checkIn: '', checkOut: '', notes: '' };
 const ATT_STATUS = { PRESENT: 'Keldi', ABSENT: 'Kelmadi', LATE: 'Kech keldi', ON_LEAVE: "Ta'tilda", HALF_DAY: 'Yarim kun' };
-const EMPTY_WH = { employeeId: '', date: '', hoursWorked: '', departmentId: '', notes: '' };
+const EMPTY_WH = { employeeId: '', date: '', startTime: '', endTime: '', hoursWorked: '', departmentId: '', notes: '' };
 
 const Employees = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -139,7 +139,9 @@ const Employees = () => {
     }
     setSaving(true);
     try {
-      await whSvc.createWorkHour({ ...whForm, employeeId: selectedEmp.id });
+      const timePrefix = whForm.startTime && whForm.endTime ? `${whForm.startTime}-${whForm.endTime} ` : '';
+      const notes = timePrefix + (whForm.notes || '');
+      await whSvc.createWorkHour({ ...whForm, notes: notes.trim() || null, employeeId: selectedEmp.id });
       enqueueSnackbar('Ish soati qo\'shildi', { variant: 'success' });
       setWhDialog({ open: false });
       loadWorkHours();
@@ -212,7 +214,7 @@ const Employees = () => {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button startIcon={<Refresh />} onClick={() => tab === 0 ? loadEmployees() : loadAttendance()}>Yangilash</Button>
+          <Button startIcon={<Refresh />} onClick={() => tab === 0 ? loadEmployees() : tab === 1 ? loadAttendance() : loadWorkHours()}>Yangilash</Button>
           {tab === 0 && can('employees:create') && (
             <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Xodim qo'shish</Button>
           )}
@@ -220,7 +222,10 @@ const Employees = () => {
             <Button variant="contained" startIcon={<Add />} onClick={() => { setAttForm({ ...EMPTY_ATT, date: format(new Date(), 'yyyy-MM-dd') }); setAttDialog({ open: true }); }}>Davomat qayd etish</Button>
           )}
           {tab === 2 && selectedEmp && (
-            <Button variant="contained" color="warning" startIcon={<Add />} onClick={() => { setWhForm({ ...EMPTY_WH, date: format(new Date(), 'yyyy-MM-dd'), departmentId: selectedEmp.departmentId || '' }); setWhDialog({ open: true }); }}>Ish soati qo'shish</Button>
+            <Button variant="contained" color="warning" startIcon={<Add />} onClick={() => {
+              setWhForm({ ...EMPTY_WH, date: format(new Date(), 'yyyy-MM-dd'), departmentId: selectedEmp.departmentId || '' });
+              setWhDialog({ open: true });
+            }}>Ish soati qo'shish</Button>
           )}
         </Box>
       </Box>
@@ -264,10 +269,27 @@ const Employees = () => {
         <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); }}>
           <Tab label="Xodimlar ro'yxati" />
           <Tab label={selectedEmp ? `Davomat: ${selectedEmp.firstName} ${selectedEmp.lastName}` : 'Davomat'} disabled={!selectedEmp} />
-          <Tab icon={<AccessTime fontSize="small" />} iconPosition="start" label={selectedEmp ? `Ish soatlari: ${selectedEmp.firstName}` : 'Ish soatlari'} disabled={!selectedEmp} />
+          <Tab icon={<AccessTime fontSize="small" />} iconPosition="start" label={selectedEmp ? `Ish soatlari: ${selectedEmp.firstName}` : 'Ish soatlari'} />
         </Tabs>
-        {tab === 2 && <Chip icon={<AccessTime fontSize="small" />} label={`Jami: ${totalHours} soat`} color="warning" variant="outlined" />}
+        {tab === 2 && selectedEmp && <Chip icon={<AccessTime fontSize="small" />} label={`Jami: ${totalHours} soat`} color="warning" variant="outlined" />}
       </Box>
+
+      {tab === 2 && !selectedEmp && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Xodim tanlang</Typography>
+            <FormControl size="small" sx={{ minWidth: 280 }}>
+              <InputLabel>Xodim</InputLabel>
+              <Select value="" label="Xodim" onChange={(e) => {
+                const emp = employees.find((em) => em.id === e.target.value);
+                if (emp) { setSelectedEmp(emp); setPage(0); }
+              }}>
+                {employees.map((em) => <MenuItem key={em.id} value={em.id}>{em.lastName} {em.firstName}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <TableContainer>
@@ -295,6 +317,7 @@ const Employees = () => {
                 ) : (
                   <>
                     <TableCell>Sana</TableCell>
+                    <TableCell>Vaqt</TableCell>
                     <TableCell align="right">Soat</TableCell>
                     <TableCell>Bo'lim</TableCell>
                     <TableCell>Izoh</TableCell>
@@ -373,6 +396,9 @@ const Employees = () => {
                 workHours.map((wh) => (
                   <TableRow key={wh.id} hover>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(wh.date), 'dd.MM.yyyy')}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12, color: 'text.secondary' }}>
+                      {wh.notes?.match(/^\d{2}:\d{2}-\d{2}:\d{2}/) ? wh.notes.match(/^\d{2}:\d{2}-\d{2}:\d{2}/)[0] : '—'}
+                    </TableCell>
                     <TableCell align="right">
                       <Chip label={`${wh.hoursWorked} soat`} size="small" color="warning" variant="outlined" />
                     </TableCell>
@@ -476,12 +502,47 @@ const Employees = () => {
         <DialogTitle>Ish soati qo'shish — {selectedEmp?.firstName} {selectedEmp?.lastName}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <UzDatePicker label="Sana *" required value={whForm.date} onChange={(e) => setWhForm((f) => ({ ...f, date: e.target.value }))} />
             </Grid>
             <Grid item xs={6}>
+              <TextField label="Boshlanish vaqti" type="time" size="small" fullWidth InputLabelProps={{ shrink: true }}
+                value={whForm.startTime} onChange={(e) => {
+                  const st = e.target.value;
+                  setWhForm((f) => {
+                    const et = f.endTime;
+                    let hrs = f.hoursWorked;
+                    if (st && et) {
+                      const [sh, sm] = st.split(':').map(Number);
+                      const [eh, em] = et.split(':').map(Number);
+                      const diff = (eh * 60 + em - (sh * 60 + sm)) / 60;
+                      if (diff > 0) hrs = diff.toFixed(1);
+                    }
+                    return { ...f, startTime: st, hoursWorked: hrs };
+                  });
+                }} />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField label="Tugash vaqti" type="time" size="small" fullWidth InputLabelProps={{ shrink: true }}
+                value={whForm.endTime} onChange={(e) => {
+                  const et = e.target.value;
+                  setWhForm((f) => {
+                    const st = f.startTime;
+                    let hrs = f.hoursWorked;
+                    if (st && et) {
+                      const [sh, sm] = st.split(':').map(Number);
+                      const [eh, em] = et.split(':').map(Number);
+                      const diff = (eh * 60 + em - (sh * 60 + sm)) / 60;
+                      if (diff > 0) hrs = diff.toFixed(1);
+                    }
+                    return { ...f, endTime: et, hoursWorked: hrs };
+                  });
+                }} />
+            </Grid>
+            <Grid item xs={12}>
               <TextField label="Soat *" type="number" size="small" fullWidth inputProps={{ min: 0.5, max: 24, step: 0.5 }}
-                value={whForm.hoursWorked} onChange={(e) => setWhForm((f) => ({ ...f, hoursWorked: e.target.value }))} />
+                value={whForm.hoursWorked} onChange={(e) => setWhForm((f) => ({ ...f, hoursWorked: e.target.value }))}
+                helperText="Vaqt kiritilsa avtomatik hisoblanadi" />
             </Grid>
             <Grid item xs={12}>
               <FormControl fullWidth size="small">

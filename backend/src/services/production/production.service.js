@@ -132,6 +132,41 @@ const getLines = async (factoryId) => {
   });
 };
 
+const createLine = async (body, factoryId) => {
+  return prisma.productionLine.create({
+    data: {
+      name: body.name,
+      code: body.code,
+      description: body.description || null,
+      capacity: body.capacity ? parseInt(body.capacity) : null,
+      factoryId,
+    },
+  });
+};
+
+const updateLine = async (id, body) => {
+  const line = await prisma.productionLine.findFirst({ where: { id, isDeleted: false } });
+  if (!line) throw new AppError('Liniya topilmadi', 404);
+  return prisma.productionLine.update({
+    where: { id },
+    data: {
+      name: body.name,
+      code: body.code,
+      description: body.description !== undefined ? body.description : line.description,
+      capacity: body.capacity !== undefined ? (body.capacity ? parseInt(body.capacity) : null) : line.capacity,
+    },
+  });
+};
+
+const deleteLine = async (id) => {
+  const line = await prisma.productionLine.findFirst({ where: { id, isDeleted: false } });
+  if (!line) throw new AppError('Liniya topilmadi', 404);
+  return prisma.productionLine.update({
+    where: { id },
+    data: { isActive: false, isDeleted: true, deletedAt: new Date() },
+  });
+};
+
 const getProductModels = async () => {
   return prisma.productModel.findMany({
     where: { isDeleted: false, isActive: true },
@@ -153,4 +188,4 @@ const deletePlan = async (id) => {
   });
 };
 
-module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, getProductModels, getShifts, deletePlan };
+module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductModels, getShifts, deletePlan };

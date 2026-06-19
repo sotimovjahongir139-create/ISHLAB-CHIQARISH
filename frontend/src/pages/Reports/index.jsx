@@ -13,7 +13,7 @@ import { useState } from 'react';
 const REPORT_DEFS = [
   { key: 'PRODUCTION', label: 'Ishlab chiqarish', icon: <Factory />, color: 'primary', hasPuTep: true },
   { key: 'QUALITY', label: 'Sifat nazorati', icon: <VerifiedUser />, color: 'success', hasPuTep: true },
-  { key: 'DOWNTIME', label: 'Toshlanishlar', icon: <AccessTime />, color: 'error', hasPuTep: false },
+  { key: 'DOWNTIME', label: "To'xtalishlar", icon: <AccessTime />, color: 'error', hasPuTep: false },
   { key: 'MATERIAL', label: 'Xomashyo', icon: <Inventory />, color: 'warning', hasPuTep: false },
   { key: 'EMPLOYEE', label: 'Xodimlar', icon: <People />, color: 'secondary', hasPuTep: false },
   { key: 'EQUIPMENT', label: 'Uskunalar', icon: <Build />, color: 'info', hasPuTep: false },

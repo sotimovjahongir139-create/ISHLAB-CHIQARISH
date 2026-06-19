@@ -50,8 +50,8 @@ const createDowntime = async (body) => {
 
 const resolveDowntime = async (id, endTime) => {
   const downtime = await prisma.downtime.findUnique({ where: { id } });
-  if (!downtime) throw new AppError('Toshlanish topilmadi', 404);
-  if (downtime.status !== 'ACTIVE') throw new AppError('Bu toshlanish allaqachon yopilgan', 400);
+  if (!downtime) throw new AppError('To\'xtalish topilmadi', 404);
+  if (downtime.status !== 'ACTIVE') throw new AppError('Bu to\'xtalish allaqachon yopilgan', 400);
 
   const end = endTime ? new Date(endTime) : new Date();
   const durationMinutes = (end - downtime.startTime) / 60000;
@@ -81,4 +81,35 @@ const getReasons = async () => {
   return prisma.downtimeReason.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
 };
 
-module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons };
+const createReason = async (body) => {
+  return prisma.downtimeReason.create({
+    data: {
+      name: body.name,
+      code: body.code,
+      category: body.category || 'UNPLANNED',
+      description: body.description || null,
+    },
+  });
+};
+
+const updateReason = async (id, body) => {
+  const reason = await prisma.downtimeReason.findFirst({ where: { id } });
+  if (!reason) throw new AppError('Sabab topilmadi', 404);
+  return prisma.downtimeReason.update({
+    where: { id },
+    data: {
+      name: body.name !== undefined ? body.name : reason.name,
+      code: body.code !== undefined ? body.code : reason.code,
+      category: body.category || reason.category,
+      description: body.description !== undefined ? body.description : reason.description,
+    },
+  });
+};
+
+const deleteReason = async (id) => {
+  const reason = await prisma.downtimeReason.findFirst({ where: { id } });
+  if (!reason) throw new AppError('Sabab topilmadi', 404);
+  return prisma.downtimeReason.update({ where: { id }, data: { isActive: false } });
+};
+
+module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons, createReason, updateReason, deleteReason };
