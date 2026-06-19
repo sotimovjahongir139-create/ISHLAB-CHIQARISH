@@ -4,6 +4,10 @@ const config = require('../config/config');
 const globalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
+  skip: (req) => {
+    // Skip rate limiting for authenticated API requests — limit only unauthenticated
+    return !!req.headers.authorization;
+  },
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Juda ko\'p so\'rov. Keyinroq urinib ko\'ring.' },

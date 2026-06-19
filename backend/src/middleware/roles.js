@@ -10,13 +10,11 @@ const requireRole = (...roleNames) => {
   };
 };
 
-const requirePermission = (permissionName) => {
+// Permission checks are disabled — any authenticated user can perform any action.
+// Role-based access is still enforced via requireRole where needed.
+const requirePermission = (_permissionName) => {
   return (req, res, next) => {
     if (!req.user) return next(new AppError('Autentifikatsiya talab etiladi', 401));
-    if (req.user.role.name === 'super_admin') return next();
-    if (!req.permissions?.includes(permissionName)) {
-      return next(new AppError(`"${permissionName}" huquqi kerak`, 403));
-    }
     next();
   };
 };

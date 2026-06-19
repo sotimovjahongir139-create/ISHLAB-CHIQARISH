@@ -12,6 +12,11 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Singleton refresh promise — prevents race condition when multiple requests
+// get 401 simultaneously (e.g. after token expiry). All callers await the same
+// in-flight refresh instead of each firing their own.
+let refreshPromise = null;
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -26,14 +31,30 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${API_BASE}/auth/refresh`, { refreshToken })
+          .then(({ data }) => {
+            const newToken = data.data.accessToken;
+            localStorage.setItem('accessToken', newToken);
+            return newToken;
+          })
+          .catch((err) => {
+            localStorage.clear();
+            window.location.href = '/login';
+            return Promise.reject(err);
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+
       try {
-        const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
-        localStorage.setItem('accessToken', data.data.accessToken);
-        original.headers.Authorization = `Bearer ${data.data.accessToken}`;
+        const newToken = await refreshPromise;
+        original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
       } catch {
-        localStorage.clear();
-        window.location.href = '/login';
+        return Promise.reject(error);
       }
     }
 
