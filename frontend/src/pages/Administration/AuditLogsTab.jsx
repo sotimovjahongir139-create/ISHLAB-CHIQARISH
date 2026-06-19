@@ -6,6 +6,7 @@ import {
   Collapse, Paper,
 } from '@mui/material';
 import { Search, ExpandMore, ExpandLess } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/admin.service';
@@ -198,10 +199,10 @@ const AuditLogsTab = () => {
           </FormControl>
         </Grid>
         <Grid item xs={6} sm={2}>
-          <TextField label="Dan" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateFrom} onChange={setFilter('dateFrom')} />
+          <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
         </Grid>
         <Grid item xs={6} sm={2}>
-          <TextField label="Gacha" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateTo} onChange={setFilter('dateTo')} />
+          <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
         </Grid>
       </Grid>
 

@@ -7,6 +7,7 @@ import {
   IconButton, Tooltip, Tabs, Tab, InputAdornment,
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, People, Search, EventNote, AccessTime } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/employee.service';
@@ -402,8 +403,7 @@ const Employees = () => {
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={6}><TextField label="Ism *" size="small" fullWidth {...Ef('firstName')} /></Grid>
             <Grid item xs={6}><TextField label="Familiya *" size="small" fullWidth {...Ef('lastName')} /></Grid>
-            <Grid item xs={6}><TextField label="Otasining ismi" size="small" fullWidth {...Ef('middleName')} /></Grid>
-            <Grid item xs={6}><TextField label="Tug'ilgan sana" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Ef('birthDate')} /></Grid>
+            <Grid item xs={6}><UzDatePicker label="Tug'ilgan sana" {...Ef('birthDate')} /></Grid>
             <Grid item xs={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Jins</InputLabel>
@@ -414,9 +414,8 @@ const Employees = () => {
             </Grid>
             <Grid item xs={6}><TextField label="Telefon" size="small" fullWidth {...Ef('phone')} /></Grid>
             <Grid item xs={6}><TextField label="Lavozim *" size="small" fullWidth {...Ef('position')} /></Grid>
-            <Grid item xs={6}><TextField label="Ish boshlagan sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Ef('hireDate')} /></Grid>
-            <Grid item xs={6}><TextField label="Maosh (so'm)" type="number" size="small" fullWidth {...Ef('salary')} /></Grid>
-            <Grid item xs={6}>
+            <Grid item xs={6}><UzDatePicker label="Ish boshlagan sana *" required {...Ef('hireDate')} /></Grid>
+            <Grid item xs={12}>
               <FormControl fullWidth size="small">
                 <InputLabel>Bo'lim</InputLabel>
                 <Select value={empForm.departmentId} label="Bo'lim" onChange={(e) => setEmpForm((f) => ({ ...f, departmentId: e.target.value }))}>
@@ -450,7 +449,7 @@ const Employees = () => {
         <DialogTitle>Davomat qayd etish — {selectedEmp?.firstName} {selectedEmp?.lastName}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}><TextField label="Sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Af('date')} /></Grid>
+            <Grid item xs={12}><UzDatePicker label="Sana *" required {...Af('date')} /></Grid>
             <Grid item xs={12}>
               <FormControl fullWidth size="small">
                 <InputLabel>Holat *</InputLabel>
@@ -478,8 +477,7 @@ const Employees = () => {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={6}>
-              <TextField label="Sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }}
-                value={whForm.date} onChange={(e) => setWhForm((f) => ({ ...f, date: e.target.value }))} />
+              <UzDatePicker label="Sana *" required value={whForm.date} onChange={(e) => setWhForm((f) => ({ ...f, date: e.target.value }))} />
             </Grid>
             <Grid item xs={6}>
               <TextField label="Soat *" type="number" size="small" fullWidth inputProps={{ min: 0.5, max: 24, step: 0.5 }}

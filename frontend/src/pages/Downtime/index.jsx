@@ -7,6 +7,7 @@ import {
   IconButton, Tooltip, Alert,
 } from '@mui/material';
 import { Add, Refresh, CheckCircle, AccessTime, Timer } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSnackbar } from 'notistack';
 import {
@@ -197,26 +198,10 @@ const Downtime = () => {
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                label="Dan"
-                type="date"
-                size="small"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={filters.dateFrom}
-                onChange={setFilter('dateFrom')}
-              />
+              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                label="Gacha"
-                type="date"
-                size="small"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={filters.dateTo}
-                onChange={setFilter('dateTo')}
-              />
+              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
             </Grid>
             {(filters.dateFrom || filters.dateTo || filters.status || filters.lineId || filters.reasonId) && (
               <Grid item xs={6} sm={3} md={2}>

@@ -7,6 +7,7 @@ import {
   LinearProgress, IconButton, Tooltip, Alert,
 } from '@mui/material';
 import { Add, Refresh, Edit, VerifiedUser, Warning } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import {
@@ -191,10 +192,10 @@ const Quality = () => {
               </>
             )}
             <Grid item xs={6} sm={3} md={2}>
-              <TextField label="Dan" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateFrom} onChange={setFilter('dateFrom')} />
+              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <TextField label="Gacha" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateTo} onChange={setFilter('dateTo')} />
+              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
             </Grid>
           </Grid>
         </CardContent>
@@ -375,7 +376,7 @@ const Quality = () => {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={6}>
-              <TextField label="Sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...If('inspectionDate')} />
+              <UzDatePicker label="Sana *" required {...If('inspectionDate')} />
             </Grid>
             <Grid item xs={6}>
               <FormControl fullWidth size="small">

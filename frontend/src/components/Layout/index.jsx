@@ -18,10 +18,10 @@ const Layout = () => {
         <Sidebar />
       )}
 
-      <Box component="main" sx={{ flexGrow: 1, width: { md: `calc(100% - ${SIDEBAR_WIDTH}px)` } }}>
+      <Box component="main" sx={{ flexGrow: 1, width: { md: `calc(100% - ${SIDEBAR_WIDTH}px)` }, height: '100vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         <Navbar onMenuClick={() => setMobileOpen(true)} />
         <Toolbar />
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ p: { xs: 2, md: 3 }, flex: 1 }}>
           <Outlet />
         </Box>
       </Box>

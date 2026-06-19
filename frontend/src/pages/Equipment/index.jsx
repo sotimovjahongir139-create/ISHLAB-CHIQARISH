@@ -7,6 +7,7 @@ import {
   IconButton, Tooltip, Tabs, Tab, InputAdornment,
 } from '@mui/material';
 import { Add, Refresh, Edit, Delete, Build, Search, CheckCircle, Schedule } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/equipment.service';
@@ -398,7 +399,7 @@ const Equipment = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}><TextField label="Sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Mf('scheduledDate')} /></Grid>
+            <Grid item xs={6}><UzDatePicker label="Sana *" required {...Mf('scheduledDate')} /></Grid>
             <Grid item xs={12}><TextField label="Tavsif" size="small" fullWidth multiline rows={3} {...Mf('description')} /></Grid>
           </Grid>
         </DialogContent>
@@ -415,10 +416,10 @@ const Equipment = () => {
         <DialogTitle>Texnik xizmatni yakunlash</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={6}><TextField label="Yakunlangan sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Cf('completedDate')} /></Grid>
+            <Grid item xs={6}><UzDatePicker label="Yakunlangan sana *" required {...Cf('completedDate')} /></Grid>
             <Grid item xs={6}><TextField label="Davomiyligi (soat)" type="number" size="small" fullWidth {...Cf('durationHours')} /></Grid>
             <Grid item xs={6}><TextField label="Xarajat (so'm)" type="number" size="small" fullWidth {...Cf('cost')} /></Grid>
-            <Grid item xs={6}><TextField label="Keyingi xizmat sanasi" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Cf('nextScheduled')} /></Grid>
+            <Grid item xs={6}><UzDatePicker label="Keyingi xizmat sanasi" {...Cf('nextScheduled')} /></Grid>
             <Grid item xs={12}><TextField label="Bajarilgan ishlar" size="small" fullWidth multiline rows={3} {...Cf('workDone')} /></Grid>
           </Grid>
         </DialogContent>

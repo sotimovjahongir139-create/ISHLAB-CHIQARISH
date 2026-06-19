@@ -6,6 +6,7 @@ import {
   FormControl, InputLabel, Select, MenuItem, Grid, IconButton, Tooltip,
 } from '@mui/material';
 import { Add, Refresh, Delete, Edit, ColorLens } from '@mui/icons-material';
+import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/paint.service';
@@ -141,10 +142,10 @@ const Paint = () => {
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={3}>
-              <TextField label="Dan" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateFrom} onChange={setFilter('dateFrom')} />
+              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
             </Grid>
             <Grid item xs={6} sm={3}>
-              <TextField label="Gacha" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} value={filters.dateTo} onChange={setFilter('dateTo')} />
+              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
             </Grid>
             {(filters.departmentId || filters.dateFrom || filters.dateTo) && (
               <Grid item xs={6} sm={3}>
@@ -218,7 +219,7 @@ const Paint = () => {
               <TextField label="Miqdor (kg) *" type="number" size="small" fullWidth inputProps={{ min: 0, step: 0.01 }} {...F('quantity')} />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="Sana *" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...F('date')} />
+              <UzDatePicker label="Sana *" required {...F('date')} />
             </Grid>
             <Grid item xs={12}>
               <FormControl fullWidth size="small">

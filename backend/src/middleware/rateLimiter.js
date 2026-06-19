@@ -11,10 +11,11 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Juda ko\'p kirish urinishi. 15 daqiqadan so\'ng urinib ko\'ring.' },
+  message: { success: false, message: 'Juda ko\'p noto\'g\'ri urinish. 15 daqiqadan so\'ng urinib ko\'ring.' },
 });
 
 module.exports = { globalLimiter, authLimiter };

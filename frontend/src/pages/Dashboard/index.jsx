@@ -260,8 +260,8 @@ const Dashboard = () => {
                     <YAxis tick={{ fontSize: 11 }} />
                     <RTooltip formatter={(v) => v.toLocaleString()} />
                     <Legend />
-                    <Bar dataKey="produced" name="Haqiqiy (PU)" fill="#1565C0" radius={[3, 3, 0, 0]} />
                     <Bar dataKey="planned" name="Reja" fill="#90CAF9" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="produced" name="Fakt" fill="#1565C0" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -286,8 +286,8 @@ const Dashboard = () => {
                     <YAxis tick={{ fontSize: 11 }} />
                     <RTooltip formatter={(v) => v.toLocaleString()} />
                     <Legend />
-                    <Bar dataKey="planned" name="Reja (TEP)" fill="#7B1FA2" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="produced" name="Haqiqiy (PU)" fill="#CE93D8" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="planned" name="Reja" fill="#7B1FA2" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="produced" name="Fakt" fill="#CE93D8" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
