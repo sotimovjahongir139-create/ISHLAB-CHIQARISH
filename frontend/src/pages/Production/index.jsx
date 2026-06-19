@@ -1,7 +1,7 @@
 import {
   Box, Typography, Grid, Card, CardContent, Button, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TablePagination, Tabs, Tab, TextField,
+  TableRow, TablePagination, TextField, ToggleButtonGroup, ToggleButton,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, CircularProgress,
   InputAdornment, IconButton, Tooltip, LinearProgress,
@@ -187,17 +187,33 @@ const Production = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Factory sx={{ fontSize: 30, color: 'primary.main' }} />
           <Box>
-            <Typography variant="h4">Ishlab chiqarish</Typography>
-            <Typography variant="body2" color="text.secondary">Rejalar (TEP) va haqiqiy natijalar (PU)</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="h4">Ishlab chiqarish</Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={tab}
+                onChange={(_, v) => { if (v !== null) { setTab(v); setPage(0); } }}
+                sx={{ height: 28 }}
+              >
+                <ToggleButton value={1} sx={{ px: 1.5, py: 0, fontSize: 12, fontWeight: 700 }}>PU</ToggleButton>
+                <ToggleButton value={0} sx={{ px: 1.5, py: 0, fontSize: 12, fontWeight: 700 }}>TEP</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {tab === 0 ? 'Rejalar (TEP)' : 'Haqiqiy natijalar (PU)'}
+            </Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button startIcon={<Refresh />} onClick={() => tab === 0 ? loadPlans() : loadFacts()}>Yangilash</Button>
-          {tab === 0 && can('production:create') && (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreatePlan}>Reja qo'shish</Button>
+          {can('production:create') && (
+            <Button variant="outlined" startIcon={<Add />} onClick={openCreatePlan}>Reja qo'shish</Button>
           )}
-          {tab === 1 && can('production:create') && (
-            <Button variant="contained" startIcon={<Add />} onClick={() => { setFactForm({ ...EMPTY_FACT, factDate: format(new Date(), 'yyyy-MM-dd') }); setFactDialog({ open: true }); }}>Natija kiritish</Button>
+          {can('production:create') && (
+            <Button variant="contained" startIcon={<Add />} onClick={() => { setFactForm({ ...EMPTY_FACT, factDate: format(new Date(), 'yyyy-MM-dd') }); setFactDialog({ open: true }); }}>
+              Fakt qo'shish
+            </Button>
           )}
         </Box>
       </Box>
@@ -271,11 +287,6 @@ const Production = () => {
           </CardContent>
         </Card>
       )}
-
-      <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); }} sx={{ mb: 2 }}>
-        <Tab label="Rejalar (TEP)" />
-        <Tab label="Haqiqiy natijalar (PU)" />
-      </Tabs>
 
       <Card>
         <TableContainer>
