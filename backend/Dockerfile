@@ -16,4 +16,4 @@ COPY backend/ ./backend/
 
 EXPOSE 5000
 WORKDIR /app
-CMD ["node", "backend/src/server.js"]
+CMD ["sh", "-c", "npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss && node backend/src/server.js"]
