@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Typography, Card, CardContent, Button, Chip, Avatar,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
@@ -71,7 +71,7 @@ const Employees = () => {
       const r = await svc.getEmployees(params);
       setEmployees(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   }, [page, search, deptFilter, statusFilter]);
 
@@ -155,7 +155,7 @@ const Employees = () => {
       enqueueSnackbar('O\'chirildi', { variant: 'success' });
       setWhDeleteDialog({ open: false, item: null });
       loadWorkHours();
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
   };
 
   const handleSaveEmp = async () => {

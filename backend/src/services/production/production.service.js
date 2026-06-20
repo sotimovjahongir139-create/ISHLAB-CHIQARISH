@@ -35,15 +35,18 @@ const getPlans = async (query) => {
 };
 
 const createPlan = async (body) => {
+  if (!body.planDate) throw new AppError('Sana kiritilishi shart', 400);
+  if (!body.plannedQty) throw new AppError('Reja miqdori kiritilishi shart', 400);
+  if (!body.productionLineId) throw new AppError('Ishlab chiqarish liniyasi tanlanishi shart', 400);
   return prisma.productionPlan.create({
     data: {
       planDate: new Date(body.planDate),
-      plannedQty: body.plannedQty,
+      plannedQty: Number(body.plannedQty),
       planType: body.planType || 'TEP',
       productionLineId: body.productionLineId,
-      productModelId: body.productModelId,
-      shiftId: body.shiftId,
-      notes: body.notes,
+      productModelId: body.productModelId || null,
+      shiftId: body.shiftId || null,
+      notes: body.notes || null,
     },
     include: INCLUDE_FULL,
   });
@@ -91,28 +94,31 @@ const getFacts = async (query) => {
 };
 
 const createFact = async (body) => {
-  const goodQty = body.producedQty - (body.defectQty || 0);
+  if (!body.factDate) throw new AppError('Sana kiritilishi shart', 400);
+  if (!body.producedQty) throw new AppError('Ishlab chiqarilgan miqdor kiritilishi shart', 400);
+  if (!body.productionLineId) throw new AppError('Ishlab chiqarish liniyasi tanlanishi shart', 400);
+  const goodQty = Number(body.producedQty) - (Number(body.defectQty) || 0);
   let efficiency = null;
 
   if (body.planId) {
     const plan = await prisma.productionPlan.findUnique({ where: { id: body.planId } });
-    if (plan) efficiency = Math.round((body.producedQty / plan.plannedQty) * 10000) / 100;
+    if (plan) efficiency = Math.round((Number(body.producedQty) / plan.plannedQty) * 10000) / 100;
   }
 
   const fact = await prisma.productionFact.create({
     data: {
       factDate: new Date(body.factDate),
-      producedQty: body.producedQty,
-      defectQty: body.defectQty || 0,
+      producedQty: Number(body.producedQty),
+      defectQty: Number(body.defectQty) || 0,
       goodQty,
-      startTime: body.startTime ? new Date(body.startTime) : undefined,
-      endTime: body.endTime ? new Date(body.endTime) : undefined,
+      startTime: body.startTime ? new Date(body.startTime) : null,
+      endTime: body.endTime ? new Date(body.endTime) : null,
       efficiency,
       productionLineId: body.productionLineId,
-      productModelId: body.productModelId,
-      shiftId: body.shiftId,
-      planId: body.planId,
-      notes: body.notes,
+      productModelId: body.productModelId || null,
+      shiftId: body.shiftId || null,
+      planId: body.planId || null,
+      notes: body.notes || null,
     },
     include: INCLUDE_FULL,
   });

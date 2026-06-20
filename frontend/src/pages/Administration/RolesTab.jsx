@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Button, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, IconButton, Tooltip, Typography,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -65,7 +65,7 @@ const RolesTab = () => {
       const [rolesRes, permsRes] = await Promise.all([svc.getRoles(), svc.getAllPermissions()]);
       setRoles(rolesRes.data.data);
       setAllPermissions(permsRes.data.data);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   };
 

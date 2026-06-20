@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, Chip, Typography,
   CircularProgress, TextField, InputAdornment, Grid,
@@ -155,7 +155,7 @@ const AuditLogsTab = () => {
       const r = await svc.getAuditLogs(params);
       setLogs(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   };
 

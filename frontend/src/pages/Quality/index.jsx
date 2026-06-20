@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Typography, Tabs, Tab, Card, CardContent, Button, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
@@ -67,7 +67,7 @@ const Quality = () => {
       const r = await svc.getDefects(params);
       setDefects(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   }, [page, filters]);
 
@@ -80,7 +80,7 @@ const Quality = () => {
       const r = await svc.getInspections(params);
       setInspections(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   }, [page, filters]);
 

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Button, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, Chip, IconButton, Tooltip,
   TextField, InputAdornment, Typography, CircularProgress,
@@ -33,7 +33,7 @@ const DepartmentsTab = ({ factoryId }) => {
       const r = await svc.getDepartments({ page: page + 1, limit: 15, search: search || undefined, factoryId });
       setDepartments(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   };
 

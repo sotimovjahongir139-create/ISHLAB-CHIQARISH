@@ -406,11 +406,11 @@ model ProductionPlan {
   productionLineId String         @map("production_line_id")
   productionLine   ProductionLine @relation(fields: [productionLineId], references: [id])
 
-  productModelId String       @map("product_model_id")
-  productModel   ProductModel @relation(fields: [productModelId], references: [id])
+  productModelId String?       @map("product_model_id")
+  productModel   ProductModel? @relation(fields: [productModelId], references: [id])
 
-  shiftId String @map("shift_id")
-  shift   Shift  @relation(fields: [shiftId], references: [id])
+  shiftId String? @map("shift_id")
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
 
   productionFacts ProductionFact[]
 
@@ -448,11 +448,11 @@ model ProductionFact {
   productionLineId String         @map("production_line_id")
   productionLine   ProductionLine @relation(fields: [productionLineId], references: [id])
 
-  productModelId String       @map("product_model_id")
-  productModel   ProductModel @relation(fields: [productModelId], references: [id])
+  productModelId String?       @map("product_model_id")
+  productModel   ProductModel? @relation(fields: [productModelId], references: [id])
 
-  shiftId String @map("shift_id")
-  shift   Shift  @relation(fields: [shiftId], references: [id])
+  shiftId String? @map("shift_id")
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
 
   planId String?         @map("plan_id")
   plan   ProductionPlan? @relation(fields: [planId], references: [id])

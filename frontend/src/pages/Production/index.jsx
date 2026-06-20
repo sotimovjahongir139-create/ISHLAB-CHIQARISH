@@ -78,8 +78,9 @@ const Production = () => {
       const r = await svc.getPlans(params);
       setPlans(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
-    finally { setLoading(false); }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || err?.message || 'Rejalar yuklanmadi', { variant: 'error' });
+    } finally { setLoading(false); }
   }, [page, filters]);
 
   const loadFacts = useCallback(async () => {
@@ -94,8 +95,9 @@ const Production = () => {
       const r = await svc.getFacts(params);
       setFacts(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
-    finally { setLoading(false); }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || err?.message || 'Natijalar yuklanmadi', { variant: 'error' });
+    } finally { setLoading(false); }
   }, [page, filters]);
 
   useEffect(() => { loadLookups(); }, []);

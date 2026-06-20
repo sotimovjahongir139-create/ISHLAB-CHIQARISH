@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Typography, Grid, Card, CardContent,
   List, ListItem, ListItemText, ListItemSecondaryAction,
   Switch, Divider, Button, TextField,
@@ -366,7 +366,7 @@ const CatsTab = () => {
       await adminSvc.setLookup('material_categories', updatedCats);
       setCats(updatedCats);
       enqueueSnackbar('Saqlandi', { variant: 'success' });
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setSaving(false); }
   };
 

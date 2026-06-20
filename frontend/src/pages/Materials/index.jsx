@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Typography, Card, CardContent, Button, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
@@ -71,7 +71,7 @@ const Materials = () => {
       const r = await svc.getMaterials(params);
       setMaterials(r.data.data);
       setTotal(r.data.pagination.total);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   }, [page, search, catFilter]);
 

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box, Typography, Card, CardContent, Button, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
@@ -49,7 +49,7 @@ const Paint = () => {
       setRecords(r.data.data);
       setTotal(r.data.pagination.total);
       setTotalQty(r.data.totalQty || 0);
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
   }, [page, filters]);
 
@@ -98,7 +98,7 @@ const Paint = () => {
       enqueueSnackbar('O\'chirildi', { variant: 'success' });
       setDeleteDialog({ open: false, item: null });
       load();
-    } catch { enqueueSnackbar('Xatolik', { variant: 'error' }); }
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
   };
 
   return (
