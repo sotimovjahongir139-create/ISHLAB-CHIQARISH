@@ -11,7 +11,7 @@ import {
 import { useState, useEffect } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell,
+  Tooltip as RTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList,
 } from 'recharts';
 import { format } from 'date-fns';
 import { useSnackbar } from 'notistack';
@@ -238,9 +238,7 @@ const Dashboard = () => {
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Typography variant="h6">
-                    {pvfTab === 'PU' ? 'PU — Fakt ko\'rsatkichlari' : 'TEP — Reja ko\'rsatkichlari'}
-                  </Typography>
+                  <Typography variant="h6">Reja va Fakt ko'rsatkichlari</Typography>
                   <ToggleButtonGroup
                     size="small"
                     exclusive
@@ -258,19 +256,22 @@ const Dashboard = () => {
                   ))}
                 </ToggleButtonGroup>
               </Box>
-              {pvfLoading ? <Skeleton variant="rectangular" height={220} /> : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={pvfFormatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+              {pvfLoading ? <Skeleton variant="rectangular" height={140} /> : (
+                <ResponsiveContainer width="100%" height={140}>
+                  <BarChart data={pvfFormatted} margin={{ top: 20, right: 16, left: 0, bottom: 0 }} barCategoryGap="40%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
                     <RTooltip formatter={(v) => v.toLocaleString()} />
-                    <Legend />
                     {pvfTab === 'TEP' && (
-                      <Bar dataKey="planned" name="Reja (TEP)" fill="#7B1FA2" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="planned" name="Reja (TEP)" fill="#7B1FA2" radius={[4, 4, 0, 0]} maxBarSize={52}>
+                        <LabelList dataKey="planned" position="top" style={{ fontSize: 10, fontWeight: 600, fill: '#7B1FA2' }} formatter={(v) => v.toLocaleString()} />
+                      </Bar>
                     )}
                     {pvfTab === 'PU' && (
-                      <Bar dataKey="produced" name="Fakt (PU)" fill="#1565C0" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="produced" name="Fakt (PU)" fill="#1565C0" radius={[4, 4, 0, 0]} maxBarSize={52}>
+                        <LabelList dataKey="produced" position="top" style={{ fontSize: 10, fontWeight: 600, fill: '#1565C0' }} formatter={(v) => v.toLocaleString()} />
+                      </Bar>
                     )}
                   </BarChart>
                 </ResponsiveContainer>
