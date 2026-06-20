@@ -4,18 +4,15 @@ import {
   TableRow, TablePagination, TextField, ToggleButtonGroup, ToggleButton,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, CircularProgress,
-  InputAdornment, IconButton, Tooltip, LinearProgress,
+  IconButton, Tooltip, LinearProgress,
 } from '@mui/material';
-import {
-  Add, Refresh, Edit, Delete, FilterList, Factory,
-  CheckCircle, Warning, PlayArrow,
-} from '@mui/icons-material';
+import { Add, Refresh, Edit, Delete, Save, Factory } from '@mui/icons-material';
 import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer,
 } from 'recharts';
 import * as svc from '../../services/production.service';
 import { PLAN_STATUS } from '../../constants';
@@ -25,17 +22,11 @@ import usePermission from '../../hooks/usePermission';
 const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', notes: '' };
 const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
-const STATUS_LABELS = {
-  DRAFT: 'Qoralama', CONFIRMED: 'Tasdiqlangan', IN_PROGRESS: 'Jarayonda',
-  COMPLETED: 'Bajarildi', CANCELLED: 'Bekor',
-};
-
 const Production = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { can } = usePermission();
   const [tab, setTab] = useState(0);
 
-  // Lookup data
   const [lines, setLines] = useState([]);
   const [models, setModels] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -44,8 +35,13 @@ const Production = () => {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // Filters
-  const [filters, setFilters] = useState({ lineId: '', modelId: '', status: '', dateFrom: '', dateTo: '' });
+  // Filters (dual-use: table filter + quick-entry context)
+  const [filters, setFilters] = useState({ lineId: '', modelId: '' });
+
+  // Quick-entry
+  const [quickReja, setQuickReja] = useState('');
+  const [quickFakt, setQuickFakt] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
 
   // Dialogs
   const [planDialog, setPlanDialog] = useState({ open: false, mode: 'create', item: null });
@@ -69,9 +65,6 @@ const Production = () => {
       const params = { page: page + 1, limit: 15 };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
-      if (filters.status) params.status = filters.status;
-      if (filters.dateFrom) params.dateFrom = filters.dateFrom;
-      if (filters.dateTo) params.dateTo = filters.dateTo;
       const r = await svc.getPlans(params);
       setPlans(r.data.data);
       setTotal(r.data.pagination.total);
@@ -86,8 +79,6 @@ const Production = () => {
       const params = { page: page + 1, limit: 15 };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
-      if (filters.dateFrom) params.dateFrom = filters.dateFrom;
-      if (filters.dateTo) params.dateTo = filters.dateTo;
       const r = await svc.getFacts(params);
       setFacts(r.data.data);
       setTotal(r.data.pagination.total);
@@ -105,6 +96,51 @@ const Production = () => {
   const setFilter = (key) => (e) => {
     setFilters((f) => ({ ...f, [key]: e.target.value }));
     setPage(0);
+  };
+
+  // Quick-entry: saves plan and/or fact for today using the selected Liniya + Model
+  const handleQuickSave = async () => {
+    if (!filters.lineId) {
+      enqueueSnackbar('Liniya tanlanishi shart', { variant: 'warning' });
+      return;
+    }
+    if (!filters.modelId) {
+      enqueueSnackbar('Model tanlanishi shart', { variant: 'warning' });
+      return;
+    }
+    if (!quickReja && !quickFakt) {
+      enqueueSnackbar('Reja yoki Fakt miqdoridan kamida biri kiritilishi shart', { variant: 'warning' });
+      return;
+    }
+    setQuickSaving(true);
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const ops = [];
+      if (quickReja && parseInt(quickReja) > 0) {
+        ops.push(svc.createPlan({
+          planDate: today,
+          plannedQty: parseInt(quickReja),
+          productionLineId: filters.lineId,
+          productModelId: filters.modelId,
+        }));
+      }
+      if (quickFakt && parseInt(quickFakt) > 0) {
+        ops.push(svc.createFact({
+          factDate: today,
+          producedQty: parseInt(quickFakt),
+          defectQty: 0,
+          productionLineId: filters.lineId,
+          productModelId: filters.modelId,
+        }));
+      }
+      await Promise.all(ops);
+      enqueueSnackbar('Saqlandi', { variant: 'success' });
+      setQuickReja('');
+      setQuickFakt('');
+      if (tab === 0) loadPlans(); else loadFacts();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' });
+    } finally { setQuickSaving(false); }
   };
 
   const openCreatePlan = () => {
@@ -169,7 +205,6 @@ const Production = () => {
   const Pf = (key) => ({ value: planForm[key], onChange: (e) => setPlanForm((f) => ({ ...f, [key]: e.target.value })) });
   const Ff = (key) => ({ value: factForm[key], onChange: (e) => setFactForm((f) => ({ ...f, [key]: e.target.value })) });
 
-  // Chart data — efficiency per line from facts
   const chartData = lines.map((line) => {
     const lineFacts = facts.filter((f) => f.productionLineId === line.id);
     const avgEff = lineFacts.length
@@ -215,7 +250,7 @@ const Production = () => {
         </Box>
       </Box>
 
-      {/* Filters */}
+      {/* Filter bar + quick-entry */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Grid container spacing={1.5} alignItems="center">
@@ -237,22 +272,40 @@ const Production = () => {
                 </Select>
               </FormControl>
             </Grid>
-            {tab === 0 && (
-              <Grid item xs={6} sm={3} md={2}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select value={filters.status} label="Status" onChange={setFilter('status')}>
-                    <MenuItem value="">Barchasi</MenuItem>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
-            )}
-            <Grid item xs={6} sm={3} md={2}>
-              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
+            <Grid item xs={5} sm={2} md={2}>
+              <TextField
+                label="Reja (dona)"
+                type="number"
+                size="small"
+                fullWidth
+                value={quickReja}
+                onChange={(e) => setQuickReja(e.target.value)}
+                inputProps={{ min: 0 }}
+              />
             </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
+            <Grid item xs={5} sm={2} md={2}>
+              <TextField
+                label="Fakt (dona)"
+                type="number"
+                size="small"
+                fullWidth
+                value={quickFakt}
+                onChange={(e) => setQuickFakt(e.target.value)}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={2} sm={2} md={2}>
+              <Button
+                variant="contained"
+                size="small"
+                fullWidth
+                startIcon={quickSaving ? <CircularProgress size={14} color="inherit" /> : <Save fontSize="small" />}
+                onClick={handleQuickSave}
+                disabled={quickSaving || (!quickReja && !quickFakt)}
+                sx={{ whiteSpace: 'nowrap', height: 40 }}
+              >
+                Saqlash
+              </Button>
             </Grid>
           </Grid>
         </CardContent>

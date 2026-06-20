@@ -97,6 +97,7 @@ const Dashboard = () => {
   const [lineTab, setLineTab] = useState('pu');
 
   const [pvfPeriod, setPvfPeriod] = useState(7);
+  const [pvfTab, setPvfTab] = useState('TEP');
   const [pvfData, setPvfData] = useState([]);
   const [pvfLoading, setPvfLoading] = useState(false);
 
@@ -230,16 +231,33 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Reja vs Fakt chart */}
+      {/* Reja vs Fakt chart with PU/TEP toggle */}
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <ChartPeriodHeader
-                title="Reja va Fakt ko'rsatkichlari"
-                period={pvfPeriod}
-                onChange={setPvfPeriod}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Typography variant="h6">
+                    {pvfTab === 'PU' ? 'PU — Fakt ko\'rsatkichlari' : 'TEP — Reja ko\'rsatkichlari'}
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={pvfTab}
+                    onChange={(_, v) => { if (v !== null) setPvfTab(v); }}
+                    sx={{ height: 26 }}
+                  >
+                    <ToggleButton value="PU" sx={{ px: 1.5, py: 0, fontSize: 11, fontWeight: 700 }}>PU</ToggleButton>
+                    <ToggleButton value="TEP" sx={{ px: 1.5, py: 0, fontSize: 11, fontWeight: 700 }}>TEP</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <ToggleButtonGroup size="small" exclusive value={pvfPeriod} onChange={(_, v) => v && setPvfPeriod(v)}>
+                  {PERIOD_OPTIONS.map((o) => (
+                    <ToggleButton key={o.value} value={o.value} sx={{ px: 1.5, py: 0.3, fontSize: 12 }}>{o.label}</ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Box>
               {pvfLoading ? <Skeleton variant="rectangular" height={220} /> : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={pvfFormatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -248,8 +266,12 @@ const Dashboard = () => {
                     <YAxis tick={{ fontSize: 11 }} />
                     <RTooltip formatter={(v) => v.toLocaleString()} />
                     <Legend />
-                    <Bar dataKey="planned" name="Reja" fill="#90CAF9" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="produced" name="Fakt" fill="#1565C0" radius={[3, 3, 0, 0]} />
+                    {pvfTab === 'TEP' && (
+                      <Bar dataKey="planned" name="Reja (TEP)" fill="#7B1FA2" radius={[3, 3, 0, 0]} />
+                    )}
+                    {pvfTab === 'PU' && (
+                      <Bar dataKey="produced" name="Fakt (PU)" fill="#1565C0" radius={[3, 3, 0, 0]} />
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               )}
