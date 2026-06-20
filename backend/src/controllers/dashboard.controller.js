@@ -38,8 +38,7 @@ const getDepartmentComparison = async (req, res) => {
 const getPlanVsFact = async (req, res) => {
   const factoryId = req.query.factoryId || req.user.factoryId;
   const days = parseInt(req.query.days) || 30;
-  const planType = req.query.type || null;
-  const data = await dashboardService.getPlanVsFact(factoryId, days, planType);
+  const data = await dashboardService.getPlanVsFact(factoryId, days);
   success(res, data);
 };
 

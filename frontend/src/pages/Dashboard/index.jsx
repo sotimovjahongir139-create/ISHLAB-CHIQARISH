@@ -96,13 +96,9 @@ const Dashboard = () => {
 
   const [lineTab, setLineTab] = useState('pu');
 
-  // Independent period selectors for PU and TEP charts
-  const [puPeriod, setPuPeriod] = useState(7);
-  const [tepPeriod, setTepPeriod] = useState(7);
-  const [puData, setPuData] = useState([]);
-  const [tepData, setTepData] = useState([]);
-  const [puLoading, setPuLoading] = useState(false);
-  const [tepLoading, setTepLoading] = useState(false);
+  const [pvfPeriod, setPvfPeriod] = useState(7);
+  const [pvfData, setPvfData] = useState([]);
+  const [pvfLoading, setPvfLoading] = useState(false);
 
   const loadMain = async (d = days) => {
     setLoading(true);
@@ -126,29 +122,19 @@ const Dashboard = () => {
     }
   };
 
-  const loadPuChart = async (d = puPeriod) => {
-    setPuLoading(true);
+  const loadPvfChart = async (d = pvfPeriod) => {
+    setPvfLoading(true);
     try {
-      const r = await svc.getPlanVsFact({ days: d, type: 'PU' });
-      setPuData(r.data.data);
-    } catch {} finally { setPuLoading(false); }
-  };
-
-  const loadTepChart = async (d = tepPeriod) => {
-    setTepLoading(true);
-    try {
-      const r = await svc.getPlanVsFact({ days: d, type: 'TEP' });
-      setTepData(r.data.data);
-    } catch {} finally { setTepLoading(false); }
+      const r = await svc.getPlanVsFact({ days: d });
+      setPvfData(r.data.data);
+    } catch {} finally { setPvfLoading(false); }
   };
 
   useEffect(() => { loadMain(days); }, [days]);
-  useEffect(() => { loadPuChart(puPeriod); }, [puPeriod]);
-  useEffect(() => { loadTepChart(tepPeriod); }, [tepPeriod]);
+  useEffect(() => { loadPvfChart(pvfPeriod); }, [pvfPeriod]);
 
   const trendFormatted = trend.map((d) => ({ ...d, date: fmtDate(d.date, days) }));
-  const puFormatted = puData.map((d) => ({ ...d, date: fmtDate(d.date, puPeriod) }));
-  const tepFormatted = tepData.map((d) => ({ ...d, date: fmtDate(d.date, tepPeriod) }));
+  const pvfFormatted = pvfData.map((d) => ({ ...d, date: fmtDate(d.date, pvfPeriod) }));
   const pieData = downtime.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
 
   // OEE = Availability × Performance × Quality (shown as %)
@@ -244,19 +230,19 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* PU Chart (Haqiqiy natijalar) */}
+      {/* Reja vs Fakt chart */}
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <ChartPeriodHeader
-                title="PU — Reja ko'rsatkichlari"
-                period={puPeriod}
-                onChange={setPuPeriod}
+                title="Reja va Fakt ko'rsatkichlari"
+                period={pvfPeriod}
+                onChange={setPvfPeriod}
               />
-              {puLoading ? <Skeleton variant="rectangular" height={220} /> : (
+              {pvfLoading ? <Skeleton variant="rectangular" height={220} /> : (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={puFormatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <BarChart data={pvfFormatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 11 }} />
@@ -264,32 +250,6 @@ const Dashboard = () => {
                     <Legend />
                     <Bar dataKey="planned" name="Reja" fill="#90CAF9" radius={[3, 3, 0, 0]} />
                     <Bar dataKey="produced" name="Fakt" fill="#1565C0" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* TEP Chart (Reja ko'rsatkichlari) */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <ChartPeriodHeader
-                title="TEP — Reja ko'rsatkichlari"
-                period={tepPeriod}
-                onChange={setTepPeriod}
-              />
-              {tepLoading ? <Skeleton variant="rectangular" height={220} /> : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={tepFormatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <RTooltip formatter={(v) => v.toLocaleString()} />
-                    <Legend />
-                    <Bar dataKey="planned" name="Reja" fill="#7B1FA2" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="produced" name="Fakt" fill="#CE93D8" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

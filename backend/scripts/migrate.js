@@ -3,16 +3,13 @@ const { PrismaClient } = require('@prisma/client');
 
 // Idempotent SQL migrations — safe to run on every deploy.
 const MIGRATIONS = [
-  // production_plan: nullable product_model_id and shift_id
+  // production_plan: ensure product_model_id and shift_id are nullable
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS product_model_id TEXT`,
   `ALTER TABLE production_plan ALTER COLUMN product_model_id DROP NOT NULL`,
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS shift_id TEXT`,
   `ALTER TABLE production_plan ALTER COLUMN shift_id DROP NOT NULL`,
 
-  // production_plan: plan_type column (PU vs TEP)
-  `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS plan_type VARCHAR(10) NOT NULL DEFAULT 'TEP'`,
-
-  // production_fact: nullable product_model_id and shift_id
+  // production_fact: ensure product_model_id and shift_id are nullable
   `ALTER TABLE production_fact ADD COLUMN IF NOT EXISTS product_model_id TEXT`,
   `ALTER TABLE production_fact ALTER COLUMN product_model_id DROP NOT NULL`,
   `ALTER TABLE production_fact ADD COLUMN IF NOT EXISTS shift_id TEXT`,
