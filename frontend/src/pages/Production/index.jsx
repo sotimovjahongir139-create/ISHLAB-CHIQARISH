@@ -22,8 +22,8 @@ import { PLAN_STATUS } from '../../constants';
 import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
-const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', shiftId: '', planType: 'TEP', notes: '' };
-const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', shiftId: '', planId: '', startTime: '', endTime: '', notes: '' };
+const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', planType: 'TEP', notes: '' };
+const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
 const STATUS_LABELS = {
   DRAFT: 'Qoralama', CONFIRMED: 'Tasdiqlangan', IN_PROGRESS: 'Jarayonda',
@@ -38,7 +38,6 @@ const Production = () => {
   // Lookup data
   const [lines, setLines] = useState([]);
   const [models, setModels] = useState([]);
-  const [shifts, setShifts] = useState([]);
   const [plans, setPlans] = useState([]);
   const [facts, setFacts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +45,7 @@ const Production = () => {
   const [total, setTotal] = useState(0);
 
   // Filters
-  const [filters, setFilters] = useState({ lineId: '', modelId: '', shiftId: '', status: '', dateFrom: '', dateTo: '' });
+  const [filters, setFilters] = useState({ lineId: '', modelId: '', status: '', dateFrom: '', dateTo: '' });
 
   // Dialogs
   const [planDialog, setPlanDialog] = useState({ open: false, mode: 'create', item: null });
@@ -58,10 +57,9 @@ const Production = () => {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [lR, mR, sR] = await Promise.all([svc.getLines(), svc.getProductModels(), svc.getShifts()]);
+      const [lR, mR] = await Promise.all([svc.getLines(), svc.getProductModels()]);
       setLines(lR.data.data);
       setModels(mR.data.data);
-      setShifts(sR.data.data);
     } catch {}
   }, []);
 
@@ -71,7 +69,6 @@ const Production = () => {
       const params = { page: page + 1, limit: 15 };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
-      if (filters.shiftId) params.shiftId = filters.shiftId;
       if (filters.status) params.status = filters.status;
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
@@ -89,7 +86,6 @@ const Production = () => {
       const params = { page: page + 1, limit: 15 };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
-      if (filters.shiftId) params.shiftId = filters.shiftId;
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
       const r = await svc.getFacts(params);
@@ -122,7 +118,6 @@ const Production = () => {
       plannedQty: p.plannedQty,
       productionLineId: p.productionLineId,
       productModelId: p.productModelId,
-      shiftId: p.shiftId || '',
       planType: p.planType || 'TEP',
       notes: p.notes || '',
     });
@@ -243,15 +238,6 @@ const Production = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Smena</InputLabel>
-                <Select value={filters.shiftId} label="Smena" onChange={setFilter('shiftId')}>
-                  <MenuItem value="">Barchasi</MenuItem>
-                  {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
             {tab === 0 && (
               <Grid item xs={6} sm={3} md={2}>
                 <FormControl size="small" fullWidth>
@@ -302,7 +288,6 @@ const Production = () => {
                     <TableCell>Sana</TableCell>
                     <TableCell>Liniya</TableCell>
                     <TableCell>Model</TableCell>
-                    <TableCell>Smena</TableCell>
                     <TableCell align="right">Reja (dona)</TableCell>
                     <TableCell>Status</TableCell>
                     {can('production:update') && <TableCell align="right">Amallar</TableCell>}
@@ -312,7 +297,6 @@ const Production = () => {
                     <TableCell>Sana</TableCell>
                     <TableCell>Liniya</TableCell>
                     <TableCell>Model</TableCell>
-                    <TableCell>Smena</TableCell>
                     <TableCell align="right">Ishlab chiqarilgan</TableCell>
                     <TableCell align="right">Yaroqli</TableCell>
                     <TableCell align="right">Nuqson</TableCell>
@@ -323,7 +307,7 @@ const Production = () => {
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
               ) : tab === 0 ? (
                 plans.map((p) => (
                   <TableRow key={p.id} hover>
@@ -333,7 +317,6 @@ const Production = () => {
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(p.planDate), 'dd.MM.yyyy')}</TableCell>
                     <TableCell>{p.productionLine?.name}</TableCell>
                     <TableCell>{p.productModel?.name}</TableCell>
-                    <TableCell>{p.shift?.name || '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{p.plannedQty.toLocaleString()}</TableCell>
                     <TableCell>
                       <Chip label={PLAN_STATUS[p.status]?.label || p.status} color={PLAN_STATUS[p.status]?.color || 'default'} size="small" />
@@ -364,7 +347,6 @@ const Production = () => {
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(f.factDate), 'dd.MM.yyyy')}</TableCell>
                     <TableCell>{f.productionLine?.name}</TableCell>
                     <TableCell>{f.productModel?.name}</TableCell>
-                    <TableCell>{f.shift?.name || '—'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{f.producedQty.toLocaleString()}</TableCell>
                     <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>{f.goodQty.toLocaleString()}</TableCell>
                     <TableCell align="right">
@@ -389,7 +371,7 @@ const Production = () => {
                 ))
               )}
               {!loading && (tab === 0 ? plans : facts).length === 0 && (
-                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>Ma'lumot topilmadi</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>Ma'lumot topilmadi</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -431,21 +413,12 @@ const Production = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <FormControl fullWidth size="small">
                 <InputLabel>Mahsulot modeli</InputLabel>
                 <Select value={planForm.productModelId} label="Mahsulot modeli" onChange={(e) => setPlanForm((f) => ({ ...f, productModelId: e.target.value }))}>
                   <MenuItem value="">—</MenuItem>
                   {models.map((m) => <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Smena</InputLabel>
-                <Select value={planForm.shiftId} label="Smena" onChange={(e) => setPlanForm((f) => ({ ...f, shiftId: e.target.value }))}>
-                  <MenuItem value="">—</MenuItem>
-                  {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
@@ -484,21 +457,12 @@ const Production = () => {
             <Grid item xs={6}>
               <TextField label="Nuqsonli (dona)" type="number" size="small" fullWidth {...Ff('defectQty')} />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <FormControl fullWidth size="small">
                 <InputLabel>Model</InputLabel>
                 <Select value={factForm.productModelId} label="Model" onChange={(e) => setFactForm((f) => ({ ...f, productModelId: e.target.value }))}>
                   <MenuItem value="">—</MenuItem>
                   {models.map((m) => <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Smena</InputLabel>
-                <Select value={factForm.shiftId} label="Smena" onChange={(e) => setFactForm((f) => ({ ...f, shiftId: e.target.value }))}>
-                  <MenuItem value="">—</MenuItem>
-                  {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
