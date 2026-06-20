@@ -2,43 +2,50 @@
 const { PrismaClient } = require('@prisma/client');
 
 // Idempotent SQL migrations — safe to run on every deploy.
-// Each statement must be safe to run multiple times without error.
 const MIGRATIONS = [
-  // Ensure product_model_id exists and is nullable on production_plan
+  // production_plan: nullable product_model_id and shift_id
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS product_model_id TEXT`,
   `ALTER TABLE production_plan ALTER COLUMN product_model_id DROP NOT NULL`,
-
-  // Ensure shift_id exists and is nullable on production_plan
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS shift_id TEXT`,
   `ALTER TABLE production_plan ALTER COLUMN shift_id DROP NOT NULL`,
 
-  // Add plan_type column (PU vs TEP split) — the main missing column
+  // production_plan: plan_type column (PU vs TEP)
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS plan_type VARCHAR(10) NOT NULL DEFAULT 'TEP'`,
 
-  // Ensure product_model_id exists and is nullable on production_fact
+  // production_fact: nullable product_model_id and shift_id
   `ALTER TABLE production_fact ADD COLUMN IF NOT EXISTS product_model_id TEXT`,
   `ALTER TABLE production_fact ALTER COLUMN product_model_id DROP NOT NULL`,
-
-  // Ensure shift_id exists and is nullable on production_fact
   `ALTER TABLE production_fact ADD COLUMN IF NOT EXISTS shift_id TEXT`,
   `ALTER TABLE production_fact ALTER COLUMN shift_id DROP NOT NULL`,
 ];
 
 async function main() {
+  console.log('[migrate] ==========================================');
+  console.log('[migrate] DB migration starting...');
+  console.log('[migrate] DATABASE_URL host:', (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@').split('@')[1]?.split('/')[0] || 'unknown');
+
   const prisma = new PrismaClient();
   try {
-    console.log('[migrate] Running DB migrations...');
-    for (const sql of MIGRATIONS) {
-      await prisma.$executeRawUnsafe(sql);
-      console.log('[migrate] OK:', sql.replace(/\s+/g, ' ').trim());
+    for (let i = 0; i < MIGRATIONS.length; i++) {
+      const sql = MIGRATIONS[i];
+      const label = sql.replace(/\s+/g, ' ').trim().slice(0, 80);
+      try {
+        await prisma.$executeRawUnsafe(sql);
+        console.log(`[migrate] [${i + 1}/${MIGRATIONS.length}] OK: ${label}`);
+      } catch (err) {
+        console.error(`[migrate] [${i + 1}/${MIGRATIONS.length}] FAIL: ${label}`);
+        console.error('[migrate] Error:', err.message);
+        throw err;
+      }
     }
     console.log('[migrate] All migrations applied successfully.');
-  } catch (err) {
-    console.error('[migrate] FATAL — migration failed:', err.message);
-    throw err;
+    console.log('[migrate] ==========================================');
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch(() => process.exit(1));
+main().catch((err) => {
+  console.error('[migrate] FATAL — server will NOT start:', err.message);
+  process.exit(1);
+});
