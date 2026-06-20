@@ -39,6 +39,7 @@ const Production = () => {
   const [filters, setFilters] = useState({ lineId: '', modelId: '' });
 
   // Quick-entry
+  const [quickDate, setQuickDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [quickReja, setQuickReja] = useState('');
   const [quickFakt, setQuickFakt] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
@@ -114,11 +115,10 @@ const Production = () => {
     }
     setQuickSaving(true);
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
       const ops = [];
       if (quickReja && parseInt(quickReja) > 0) {
         ops.push(svc.createPlan({
-          planDate: today,
+          planDate: quickDate,
           plannedQty: parseInt(quickReja),
           productionLineId: filters.lineId,
           productModelId: filters.modelId,
@@ -126,7 +126,7 @@ const Production = () => {
       }
       if (quickFakt && parseInt(quickFakt) > 0) {
         ops.push(svc.createFact({
-          factDate: today,
+          factDate: quickDate,
           producedQty: parseInt(quickFakt),
           defectQty: 0,
           productionLineId: filters.lineId,
@@ -254,7 +254,18 @@ const Production = () => {
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Grid container spacing={1.5} alignItems="center">
-            <Grid item xs={6} sm={3} md={2}>
+            <Grid item xs={6} sm={2} md={2}>
+              <TextField
+                label="Sana"
+                type="date"
+                size="small"
+                fullWidth
+                value={quickDate}
+                onChange={(e) => setQuickDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={2} md={2}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Liniya</InputLabel>
                 <Select value={filters.lineId} label="Liniya" onChange={setFilter('lineId')}>
@@ -263,7 +274,7 @@ const Production = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6} sm={3} md={2}>
+            <Grid item xs={6} sm={2} md={2}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Model</InputLabel>
                 <Select value={filters.modelId} label="Model" onChange={setFilter('modelId')}>
@@ -272,7 +283,7 @@ const Production = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={5} sm={2} md={2}>
+            <Grid item xs={4} sm={2} md={2}>
               <TextField
                 label="Reja (dona)"
                 type="number"
@@ -283,7 +294,7 @@ const Production = () => {
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={5} sm={2} md={2}>
+            <Grid item xs={4} sm={2} md={2}>
               <TextField
                 label="Fakt (dona)"
                 type="number"
@@ -294,7 +305,7 @@ const Production = () => {
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={2} sm={2} md={2}>
+            <Grid item xs={4} sm={2} md={2}>
               <Button
                 variant="contained"
                 size="small"
