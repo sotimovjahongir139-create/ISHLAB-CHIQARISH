@@ -22,7 +22,7 @@ import { PLAN_STATUS } from '../../constants';
 import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
-const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', shiftId: '', notes: '' };
+const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', shiftId: '', planType: 'TEP', notes: '' };
 const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', shiftId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
 const STATUS_LABELS = {
@@ -110,7 +110,7 @@ const Production = () => {
   };
 
   const openCreatePlan = () => {
-    setPlanForm({ ...EMPTY_PLAN, planDate: format(new Date(), 'yyyy-MM-dd') });
+    setPlanForm({ ...EMPTY_PLAN, planDate: format(new Date(), 'yyyy-MM-dd'), planType: tab === 1 ? 'PU' : 'TEP' });
     setPlanDialog({ open: true, mode: 'create', item: null });
   };
 
@@ -121,6 +121,7 @@ const Production = () => {
       productionLineId: p.productionLineId,
       productModelId: p.productModelId,
       shiftId: p.shiftId || '',
+      planType: p.planType || 'TEP',
       notes: p.notes || '',
     });
     setPlanDialog({ open: true, mode: 'edit', item: p });
@@ -295,6 +296,7 @@ const Production = () => {
               <TableRow>
                 {tab === 0 ? (
                   <>
+                    <TableCell>Bo'lim</TableCell>
                     <TableCell>Sana</TableCell>
                     <TableCell>Liniya</TableCell>
                     <TableCell>Model</TableCell>
@@ -323,6 +325,9 @@ const Production = () => {
               ) : tab === 0 ? (
                 plans.map((p) => (
                   <TableRow key={p.id} hover>
+                    <TableCell>
+                      <Chip label={p.planType || 'TEP'} size="small" color={p.planType === 'PU' ? 'primary' : 'secondary'} variant="outlined" />
+                    </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(p.planDate), 'dd.MM.yyyy')}</TableCell>
                     <TableCell>{p.productionLine?.name}</TableCell>
                     <TableCell>{p.productModel?.name}</TableCell>
@@ -396,16 +401,27 @@ const Production = () => {
 
       {/* Plan create/edit dialog */}
       <Dialog open={planDialog.open} onClose={() => setPlanDialog({ open: false, mode: 'create', item: null })} maxWidth="sm" fullWidth>
-        <DialogTitle>{planDialog.mode === 'create' ? 'Yangi reja (TEP)' : 'Rejani tahrirlash'}</DialogTitle>
+        <DialogTitle>
+          {planDialog.mode === 'create' ? `Yangi reja (${planForm.planType})` : 'Rejani tahrirlash'}
+        </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Bo'lim *</InputLabel>
+                <Select value={planForm.planType} label="Bo'lim *" onChange={(e) => setPlanForm((f) => ({ ...f, planType: e.target.value }))}>
+                  <MenuItem value="TEP">TEP</MenuItem>
+                  <MenuItem value="PU">PU</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={6}>
               <UzDatePicker label="Sana *" required {...Pf('planDate')} />
             </Grid>
             <Grid item xs={6}>
               <TextField label="Reja miqdori (dona) *" type="number" size="small" fullWidth {...Pf('plannedQty')} />
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Ishlab chiqarish liniyasi *</InputLabel>
                 <Select value={planForm.productionLineId} label="Ishlab chiqarish liniyasi *" onChange={(e) => setPlanForm((f) => ({ ...f, productionLineId: e.target.value }))}>

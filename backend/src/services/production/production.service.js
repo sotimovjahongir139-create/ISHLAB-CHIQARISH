@@ -18,6 +18,7 @@ const getPlans = async (query) => {
   if (query.modelId) where.productModelId = query.modelId;
   if (query.shiftId) where.shiftId = query.shiftId;
   if (query.status) where.status = query.status;
+  if (query.planType) where.planType = query.planType;
 
   const [data, total] = await Promise.all([
     prisma.productionPlan.findMany({
@@ -38,6 +39,7 @@ const createPlan = async (body) => {
     data: {
       planDate: new Date(body.planDate),
       plannedQty: body.plannedQty,
+      planType: body.planType || 'TEP',
       productionLineId: body.productionLineId,
       productModelId: body.productModelId,
       shiftId: body.shiftId,

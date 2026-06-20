@@ -129,7 +129,7 @@ const Dashboard = () => {
   const loadPuChart = async (d = puPeriod) => {
     setPuLoading(true);
     try {
-      const r = await svc.getPlanVsFact({ days: d });
+      const r = await svc.getPlanVsFact({ days: d, type: 'PU' });
       setPuData(r.data.data);
     } catch {} finally { setPuLoading(false); }
   };
@@ -137,7 +137,7 @@ const Dashboard = () => {
   const loadTepChart = async (d = tepPeriod) => {
     setTepLoading(true);
     try {
-      const r = await svc.getPlanVsFact({ days: d });
+      const r = await svc.getPlanVsFact({ days: d, type: 'TEP' });
       setTepData(r.data.data);
     } catch {} finally { setTepLoading(false); }
   };

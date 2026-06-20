@@ -165,7 +165,7 @@ const getDepartmentComparison = async (factoryId, days = 30) => {
   });
 };
 
-const getPlanVsFact = async (factoryId, days = 30) => {
+const getPlanVsFact = async (factoryId, days = 30, planType = null) => {
   const from = subDays(new Date(), days - 1);
 
   const [plans, facts] = await Promise.all([
@@ -174,6 +174,7 @@ const getPlanVsFact = async (factoryId, days = 30) => {
       where: {
         planDate: { gte: startOfDay(from) },
         ...(factoryId ? { productionLine: { factoryId } } : {}),
+        ...(planType ? { planType } : {}),
       },
       _sum: { plannedQty: true },
       orderBy: { planDate: 'asc' },
