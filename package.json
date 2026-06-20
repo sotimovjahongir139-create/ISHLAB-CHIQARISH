@@ -18,11 +18,11 @@
     "db:reset": "prisma migrate reset --schema=prisma/schema.prisma"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "prisma": "^5.20.0"
+    "concurrently": "^8.2.2"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
+    "prisma": "^5.20.0",
     "bcryptjs": "^2.4.3",
     "dunder-proto": "^1.0.1"
   }
