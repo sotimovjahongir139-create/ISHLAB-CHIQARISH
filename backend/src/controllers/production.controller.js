@@ -46,9 +46,35 @@ const deleteLine = async (req, res) => {
   success(res, null, 'Liniya o\'chirildi');
 };
 
+const getProductCategories = async (req, res) => {
+  const data = await svc.getProductCategories();
+  success(res, data);
+};
+
 const getProductModels = async (req, res) => {
   const data = await svc.getProductModels();
   success(res, data);
+};
+
+const getAllProductModels = async (req, res) => {
+  const { data, total, page, limit } = await svc.getAllProductModels(req.query);
+  const { paginated } = require('../utils/response');
+  paginated(res, data, total, page, limit);
+};
+
+const createProductModel = async (req, res) => {
+  const data = await svc.createProductModel(req.body);
+  created(res, data, 'Model qo\'shildi');
+};
+
+const updateProductModel = async (req, res) => {
+  const data = await svc.updateProductModel(req.params.id, req.body);
+  success(res, data, 'Model yangilandi');
+};
+
+const deleteProductModel = async (req, res) => {
+  await svc.deleteProductModel(req.params.id);
+  success(res, null, 'Model o\'chirildi');
 };
 
 const getShifts = async (req, res) => {
@@ -61,4 +87,4 @@ const deletePlan = async (req, res) => {
   success(res, null, 'Reja o\'chirildi');
 };
 
-module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductModels, getShifts, deletePlan };
+module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductCategories, getProductModels, getAllProductModels, createProductModel, updateProductModel, deleteProductModel, getShifts, deletePlan };

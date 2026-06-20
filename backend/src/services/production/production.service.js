@@ -167,11 +167,74 @@ const deleteLine = async (id) => {
   });
 };
 
+const getProductCategories = async () => {
+  return prisma.productCategory.findMany({ orderBy: { name: 'asc' } });
+};
+
 const getProductModels = async () => {
   return prisma.productModel.findMany({
     where: { isDeleted: false, isActive: true },
     orderBy: { name: 'asc' },
+    include: { category: { select: { id: true, name: true } } },
   });
+};
+
+const getAllProductModels = async (query = {}) => {
+  const { getPagination } = require('../../utils/pagination');
+  const { page, limit, skip } = getPagination(query);
+  const search = query.search?.trim();
+  const where = { isDeleted: false };
+  if (search) where.OR = [{ name: { contains: search, mode: 'insensitive' } }, { code: { contains: search, mode: 'insensitive' } }];
+  const [data, total] = await Promise.all([
+    prisma.productModel.findMany({
+      where, skip, take: limit, orderBy: { name: 'asc' },
+      include: { category: { select: { id: true, name: true } } },
+    }),
+    prisma.productModel.count({ where }),
+  ]);
+  return { data, total, page, limit };
+};
+
+const createProductModel = async (body) => {
+  const exists = await prisma.productModel.findFirst({ where: { code: body.code, isDeleted: false } });
+  if (exists) throw new AppError('Bu kod allaqachon mavjud', 400);
+  return prisma.productModel.create({
+    data: {
+      name: body.name,
+      code: body.code.toUpperCase(),
+      description: body.description || null,
+      unit: body.unit || 'dona',
+      categoryId: body.categoryId,
+    },
+    include: { category: { select: { id: true, name: true } } },
+  });
+};
+
+const updateProductModel = async (id, body) => {
+  const model = await prisma.productModel.findFirst({ where: { id, isDeleted: false } });
+  if (!model) throw new AppError('Model topilmadi', 404);
+  return prisma.productModel.update({
+    where: { id },
+    data: {
+      name: body.name !== undefined ? body.name : model.name,
+      description: body.description !== undefined ? body.description : model.description,
+      unit: body.unit !== undefined ? body.unit : model.unit,
+      isActive: body.isActive !== undefined ? body.isActive : model.isActive,
+      categoryId: body.categoryId !== undefined ? body.categoryId : model.categoryId,
+    },
+    include: { category: { select: { id: true, name: true } } },
+  });
+};
+
+const deleteProductModel = async (id) => {
+  const model = await prisma.productModel.findFirst({ where: { id, isDeleted: false } });
+  if (!model) throw new AppError('Model topilmadi', 404);
+  const usedInPlans = await prisma.productionPlan.count({ where: { productModelId: id } });
+  const usedInFacts = await prisma.productionFact.count({ where: { productModelId: id } });
+  if (usedInPlans + usedInFacts > 0) {
+    return prisma.productModel.update({ where: { id }, data: { isActive: false } });
+  }
+  return prisma.productModel.update({ where: { id }, data: { isActive: false, isDeleted: true, deletedAt: new Date() } });
 };
 
 const getShifts = async () => {
@@ -188,4 +251,4 @@ const deletePlan = async (id) => {
   });
 };
 
-module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductModels, getShifts, deletePlan };
+module.exports = { getPlans, createPlan, updatePlan, getFacts, createFact, getLines, createLine, updateLine, deleteLine, getProductCategories, getProductModels, getAllProductModels, createProductModel, updateProductModel, deleteProductModel, getShifts, deletePlan };

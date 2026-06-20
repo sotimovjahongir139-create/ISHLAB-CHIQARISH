@@ -3,7 +3,7 @@ import {
   Badge,
 } from '@mui/material';
 import {
-  People, Security, Business, History, AdminPanelSettings,
+  People, Security, Business, History, AdminPanelSettings, Category,
 } from '@mui/icons-material';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -12,11 +12,13 @@ import UsersTab from './UsersTab';
 import RolesTab from './RolesTab';
 import DepartmentsTab from './DepartmentsTab';
 import AuditLogsTab from './AuditLogsTab';
+import ModelsTab from './ModelsTab';
 
 const TABS = [
   { id: 'users', label: 'Foydalanuvchilar', icon: <People />, permission: 'users:read' },
   { id: 'roles', label: 'Rollar', icon: <Security />, permission: 'roles:read' },
   { id: 'departments', label: 'Bo\'limlar', icon: <Business />, permission: 'departments:read' },
+  { id: 'models', label: 'Modellar', icon: <Category />, permission: 'production:read' },
   { id: 'audit', label: 'Audit jurnali', icon: <History />, role: 'super_admin' },
 ];
 
@@ -72,6 +74,7 @@ const Administration = () => {
           {current?.id === 'users' && <UsersTab />}
           {current?.id === 'roles' && <RolesTab />}
           {current?.id === 'departments' && <DepartmentsTab factoryId={user?.factoryId} />}
+          {current?.id === 'models' && <ModelsTab />}
           {current?.id === 'audit' && <AuditLogsTab />}
         </CardContent>
       </Card>
