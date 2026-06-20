@@ -24,7 +24,7 @@ const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLin
 
 const Production = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const { can } = usePermission();
+  const { can, hasRole } = usePermission();
   const [tab, setTab] = useState(0);
 
   const [lines, setLines] = useState([]);
@@ -377,9 +377,9 @@ const Production = () => {
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          {can('production:delete') && (
+                          {(can('production:delete') || hasRole('super_admin', 'admin')) && (
                             <Tooltip title="O'chirish">
-                              <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: p })} disabled={p.status !== 'DRAFT'}>
+                              <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: p })}>
                                 <Delete fontSize="small" />
                               </IconButton>
                             </Tooltip>

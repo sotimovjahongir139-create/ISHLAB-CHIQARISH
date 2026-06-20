@@ -8,3 +8,4 @@ export const getActiveDowntimes = (params) => api.get('/downtime/active', { para
 export const getDowntimes = (params) => api.get('/downtime', { params });
 export const createDowntime = (data) => api.post('/downtime', data);
 export const resolveDowntime = (id, endTime) => api.put(`/downtime/${id}/resolve`, { endTime });
+export const deleteDowntime = (id) => api.delete(`/downtime/${id}`);

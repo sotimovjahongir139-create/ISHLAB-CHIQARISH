@@ -6,7 +6,7 @@
   FormControl, InputLabel, Select, MenuItem, Grid,
   IconButton, Tooltip, Alert,
 } from '@mui/material';
-import { Add, Refresh, CheckCircle, AccessTime, Timer } from '@mui/icons-material';
+import { Add, Refresh, CheckCircle, AccessTime, Timer, Delete } from '@mui/icons-material';
 import UzDatePicker from '../../components/UzDatePicker';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSnackbar } from 'notistack';
@@ -39,7 +39,7 @@ const getDuration = (row, now) => {
 
 const Downtime = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const { can } = usePermission();
+  const { can, hasRole } = usePermission();
 
   const [downtimes, setDowntimes] = useState([]);
   const [reasons, setReasons] = useState([]);
@@ -54,6 +54,7 @@ const Downtime = () => {
 
   const [createDialog, setCreateDialog] = useState(false);
   const [resolveDialog, setResolveDialog] = useState({ open: false, item: null, endTime: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
@@ -107,6 +108,15 @@ const Downtime = () => {
       await load();
     } catch (err) { enqueueSnackbar(err.response?.data?.message || 'Xatolik', { variant: 'error' }); }
     finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await svc.deleteDowntime(deleteDialog.item.id);
+      enqueueSnackbar("To'xtalish o'chirildi", { variant: 'success' });
+      setDeleteDialog({ open: false, item: null });
+      load();
+    } catch (err) { enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' }); }
   };
 
   const handleResolve = async () => {
@@ -262,7 +272,7 @@ const Downtime = () => {
                 <TableCell>Davomiyligi</TableCell>
                 <TableCell>Holat</TableCell>
                 <TableCell>Tavsif</TableCell>
-                {can('downtime:update') && <TableCell align="center">Amallar</TableCell>}
+                {(can('downtime:update') || can('downtime:delete') || hasRole('super_admin', 'admin')) && <TableCell align="center">Amallar</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -300,20 +310,27 @@ const Downtime = () => {
                     <TableCell>
                       <Typography variant="caption" color="text.secondary">{d.description || '—'}</Typography>
                     </TableCell>
-                    {can('downtime:update') && (
+                    {(can('downtime:update') || can('downtime:delete') || hasRole('super_admin', 'admin')) && (
                       <TableCell align="center">
-                        {d.status === 'ACTIVE' && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            startIcon={<CheckCircle fontSize="small" />}
-                            onClick={() => setResolveDialog({ open: true, item: d, endTime: '' })}
-                            sx={{ whiteSpace: 'nowrap', fontSize: 12, py: 0.4, px: 1.2 }}
-                          >
-                            Tugatish
-                          </Button>
-                        )}
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                          {d.status === 'ACTIVE' && can('downtime:update') && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="success"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={() => setResolveDialog({ open: true, item: d, endTime: '' })}
+                              sx={{ whiteSpace: 'nowrap', fontSize: 12, py: 0.4, px: 1.2 }}
+                            >
+                              Tugatish
+                            </Button>
+                          )}
+                          <Tooltip title="O'chirish">
+                            <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: d })}>
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     )}
                   </TableRow>
@@ -396,6 +413,22 @@ const Downtime = () => {
           >
             {saving ? <CircularProgress size={18} color="inherit" /> : 'Qayd etish'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete confirm dialog */}
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>To'xtalishni o'chirish</DialogTitle>
+        <DialogContent>
+          <Typography>
+            <strong>{deleteDialog.item?.reason?.name}</strong> sababi bilan{' '}
+            {deleteDialog.item?.startTime && format(new Date(deleteDialog.item.startTime), 'd MMM, HH:mm')}
+            {' '}da qayd etilgan to'xtalish o'chiriladi. Tasdiqlaysizmi?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Bekor</Button>
+          <Button variant="contained" color="error" onClick={handleDelete}>O'chirish</Button>
         </DialogActions>
       </Dialog>
 

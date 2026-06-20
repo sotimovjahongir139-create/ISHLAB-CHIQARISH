@@ -112,4 +112,10 @@ const deleteReason = async (id) => {
   return prisma.downtimeReason.update({ where: { id }, data: { isActive: false } });
 };
 
-module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons, createReason, updateReason, deleteReason };
+const deleteDowntime = async (id) => {
+  const downtime = await prisma.downtime.findUnique({ where: { id } });
+  if (!downtime) throw new AppError("To'xtalish topilmadi", 404);
+  await prisma.downtime.delete({ where: { id } });
+};
+
+module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons, createReason, updateReason, deleteReason, deleteDowntime };

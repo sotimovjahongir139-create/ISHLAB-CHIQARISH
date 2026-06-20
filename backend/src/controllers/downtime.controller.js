@@ -41,4 +41,9 @@ const deleteReason = async (req, res) => {
   success(res, null, 'Sabab o\'chirildi');
 };
 
-module.exports = { getDowntimes, createDowntime, resolveDowntime, getActive, getReasons, createReason, updateReason, deleteReason };
+const deleteDowntime = async (req, res) => {
+  await svc.deleteDowntime(req.params.id);
+  success(res, null, "To'xtalish o'chirildi");
+};
+
+module.exports = { getDowntimes, createDowntime, resolveDowntime, getActive, getReasons, createReason, updateReason, deleteReason, deleteDowntime };

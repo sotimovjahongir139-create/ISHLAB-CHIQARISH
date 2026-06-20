@@ -250,7 +250,7 @@ const getShifts = async () => {
 const deletePlan = async (id) => {
   const plan = await prisma.productionPlan.findFirst({ where: { id, isDeleted: false } });
   if (!plan) throw new AppError('Reja topilmadi', 404);
-  if (plan.status !== 'DRAFT') throw new AppError('Faqat qoralama rejalarni o\'chirish mumkin', 400);
+  if (['COMPLETED', 'IN_PROGRESS'].includes(plan.status)) throw new AppError('Tugallangan yoki jarayondagi rejani o\'chirish mumkin emas', 400);
   return prisma.productionPlan.update({
     where: { id },
     data: { isDeleted: true, deletedAt: new Date() },

@@ -15,5 +15,6 @@ router.get('/active', requirePermission(PERMISSIONS.DOWNTIME_READ), ctrl.getActi
 router.get('/', requirePermission(PERMISSIONS.DOWNTIME_READ), ctrl.getDowntimes);
 router.post('/', requirePermission(PERMISSIONS.DOWNTIME_CREATE), auditMiddleware('downtime'), ctrl.createDowntime);
 router.put('/:id/resolve', requirePermission(PERMISSIONS.DOWNTIME_UPDATE), auditMiddleware('downtime'), ctrl.resolveDowntime);
+router.delete('/:id', requirePermission(PERMISSIONS.DOWNTIME_DELETE), auditMiddleware('downtime'), ctrl.deleteDowntime);
 
 module.exports = router;
