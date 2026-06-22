@@ -17,7 +17,7 @@ const MIGRATIONS = [
 
   // plan_type: PU vs TEP separation
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS plan_type VARCHAR(10) NOT NULL DEFAULT 'TEP'`,
-  `UPDATE production_plan pp SET plan_type='PU' FROM production_lines pl WHERE pp.production_line_id=pl.id AND pl.name ILIKE 'PU%'`,
+  `UPDATE production_plan SET plan_type='PU' FROM production_lines WHERE production_plan.production_line_id=production_lines.id AND production_lines.name ILIKE 'PU%'`,
 ];
 
 async function main() {

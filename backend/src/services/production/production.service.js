@@ -10,6 +10,14 @@ const { getPagination, getSort } = require('../../utils/pagination');
   } catch (_) {}
 })();
 
+// Ensure plan_type column exists and PU line plans are correctly tagged
+(async () => {
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS plan_type VARCHAR(10) NOT NULL DEFAULT 'TEP'`);
+    await prisma.$executeRawUnsafe(`UPDATE production_plan SET plan_type='PU' FROM production_lines WHERE production_plan.production_line_id=production_lines.id AND production_lines.name ILIKE 'PU%'`);
+  } catch (_) {}
+})();
+
 const INCLUDE_FULL = {
   productionLine: { select: { id: true, name: true, code: true } },
   productModel: { select: { id: true, name: true, code: true, unit: true } },
@@ -33,16 +41,35 @@ const getPlans = async (query) => {
   if (query.status) where.status = query.status;
   if (query.planType) where.planType = query.planType;
 
-  const [data, total] = await Promise.all([
-    prisma.productionPlan.findMany({
-      where,
-      include: INCLUDE_PLANS,
-      orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
-      skip,
-      take: limit,
-    }),
-    prisma.productionPlan.count({ where }),
-  ]);
+  let data, total;
+  try {
+    [data, total] = await Promise.all([
+      prisma.productionPlan.findMany({
+        where,
+        include: INCLUDE_PLANS,
+        orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
+        skip,
+        take: limit,
+      }),
+      prisma.productionPlan.count({ where }),
+    ]);
+  } catch (err) {
+    if (where.planType && (err.code === 'P2022' || err.name === 'PrismaClientValidationError')) {
+      delete where.planType;
+      [data, total] = await Promise.all([
+        prisma.productionPlan.findMany({
+          where,
+          include: INCLUDE_PLANS,
+          orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
+          skip,
+          take: limit,
+        }),
+        prisma.productionPlan.count({ where }),
+      ]);
+    } else {
+      throw err;
+    }
+  }
 
   return { data, total, page, limit };
 };
