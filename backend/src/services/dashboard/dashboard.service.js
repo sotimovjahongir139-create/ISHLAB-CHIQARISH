@@ -165,25 +165,36 @@ const getDepartmentComparison = async (factoryId, days = 30) => {
   });
 };
 
-const getPlanVsFact = async (factoryId, days = 30) => {
+const getPlanVsFact = async (factoryId, days = 30, planType = null) => {
   const from = subDays(new Date(), days - 1);
+
+  const planLineWhere = {};
+  if (factoryId) planLineWhere.factoryId = factoryId;
+  const planWhere = {
+    planDate: { gte: startOfDay(from) },
+    ...(Object.keys(planLineWhere).length > 0 ? { productionLine: planLineWhere } : {}),
+    ...(planType ? { planType } : {}),
+  };
+
+  const factLineWhere = {};
+  if (factoryId) factLineWhere.factoryId = factoryId;
+  if (planType === 'PU') factLineWhere.name = { startsWith: 'PU', mode: 'insensitive' };
+  else if (planType === 'TEP') factLineWhere.name = { startsWith: 'TEP', mode: 'insensitive' };
+  const factWhere = {
+    factDate: { gte: startOfDay(from) },
+    ...(Object.keys(factLineWhere).length > 0 ? { productionLine: factLineWhere } : {}),
+  };
 
   const [plans, facts] = await Promise.all([
     prisma.productionPlan.groupBy({
       by: ['planDate'],
-      where: {
-        planDate: { gte: startOfDay(from) },
-        ...(factoryId ? { productionLine: { factoryId } } : {}),
-      },
+      where: planWhere,
       _sum: { plannedQty: true },
       orderBy: { planDate: 'asc' },
     }),
     prisma.productionFact.groupBy({
       by: ['factDate'],
-      where: {
-        factDate: { gte: startOfDay(from) },
-        ...(factoryId ? { productionLine: { factoryId } } : {}),
-      },
+      where: factWhere,
       _sum: { producedQty: true, goodQty: true },
       _avg: { efficiency: true },
       orderBy: { factDate: 'asc' },

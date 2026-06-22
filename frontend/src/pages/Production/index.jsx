@@ -19,7 +19,7 @@ import { PLAN_STATUS } from '../../constants';
 import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
-const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', notes: '' };
+const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', notes: '', planType: 'TEP' };
 const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
 const Production = () => {
@@ -63,7 +63,7 @@ const Production = () => {
   const loadPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: page + 1, limit: 15 };
+      const params = { page: page + 1, limit: 15, planType: 'TEP' };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
       const r = await svc.getPlans(params);
@@ -77,7 +77,7 @@ const Production = () => {
   const loadFacts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: page + 1, limit: 15 };
+      const params = { page: page + 1, limit: 15, linePrefix: 'PU' };
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
       const r = await svc.getFacts(params);
@@ -122,6 +122,7 @@ const Production = () => {
           plannedQty: parseInt(quickReja),
           productionLineId: filters.lineId,
           productModelId: filters.modelId,
+          planType: tab === 1 ? 'PU' : 'TEP',
         }));
       }
       if (quickFakt && parseInt(quickFakt) > 0) {
@@ -144,7 +145,7 @@ const Production = () => {
   };
 
   const openCreatePlan = () => {
-    setPlanForm({ ...EMPTY_PLAN, planDate: format(new Date(), 'yyyy-MM-dd') });
+    setPlanForm({ ...EMPTY_PLAN, planDate: format(new Date(), 'yyyy-MM-dd'), planType: tab === 1 ? 'PU' : 'TEP' });
     setPlanDialog({ open: true, mode: 'create', item: null });
   };
 
@@ -351,8 +352,9 @@ const Production = () => {
                     <TableCell>Liniya</TableCell>
                     <TableCell>Model</TableCell>
                     <TableCell align="right">Reja (dona)</TableCell>
+                    <TableCell align="right">Fakt (dona)</TableCell>
                     <TableCell>Status</TableCell>
-                    {can('production:update') && <TableCell align="right">Amallar</TableCell>}
+                    {(can('production:update') || can('production:delete') || hasRole('super_admin', 'admin')) && <TableCell align="right">Amallar</TableCell>}
                   </>
                 ) : (
                   <>
@@ -377,6 +379,11 @@ const Production = () => {
                     <TableCell>{p.productionLine?.name}</TableCell>
                     <TableCell>{p.productModel?.name}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>{p.plannedQty.toLocaleString()}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: ((p.productionFacts || []).reduce((s, f) => s + f.producedQty, 0)) > 0 ? 'success.main' : 'text.disabled' }}>
+                      {((p.productionFacts || []).reduce((s, f) => s + f.producedQty, 0)) > 0
+                        ? (p.productionFacts || []).reduce((s, f) => s + f.producedQty, 0).toLocaleString()
+                        : '—'}
+                    </TableCell>
                     <TableCell>
                       <Chip label={PLAN_STATUS[p.status]?.label || p.status} color={PLAN_STATUS[p.status]?.color || 'default'} size="small" />
                     </TableCell>

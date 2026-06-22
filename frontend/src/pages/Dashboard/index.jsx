@@ -157,16 +157,16 @@ const Dashboard = () => {
     }
   };
 
-  const loadPvfChart = async (d = pvfPeriod) => {
+  const loadPvfChart = async (d = pvfPeriod, tab = pvfTab) => {
     setPvfLoading(true);
     try {
-      const r = await svc.getPlanVsFact({ days: d });
+      const r = await svc.getPlanVsFact({ days: d, planType: tab });
       setPvfData(r.data.data);
     } catch {} finally { setPvfLoading(false); }
   };
 
   useEffect(() => { loadMain(days); }, [days]);
-  useEffect(() => { loadPvfChart(pvfPeriod); }, [pvfPeriod]);
+  useEffect(() => { loadPvfChart(pvfPeriod, pvfTab); }, [pvfPeriod, pvfTab]);
 
   const trendFormatted = trend.map((d) => ({ ...d, date: fmtDate(d.date, days) }));
   const pvfFilled = fillPvfRange(pvfData, pvfPeriod);
@@ -259,27 +259,24 @@ const Dashboard = () => {
                   </Box>
                 }
               />
-              {pvfLoading ? <Skeleton variant="rectangular" height={148} /> : (
-                <ResponsiveContainer width="100%" height={148}>
-                  <BarChart data={pvfFormatted} margin={{ top: 22, right: 16, left: 0, bottom: 0 }} barCategoryGap="35%">
+              {pvfLoading ? <Skeleton variant="rectangular" height={168} /> : (
+                <ResponsiveContainer width="100%" height={168}>
+                  <BarChart data={pvfFormatted} margin={{ top: 20, right: 16, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
                     <XAxis dataKey="date" tick={axTick} axisLine={false} tickLine={false} interval={pvfXInterval} />
                     <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} />
                     <RTooltip formatter={(v) => v.toLocaleString()} />
-                    {pvfTab === 'TEP' && (
-                      <Bar dataKey="planned" name="Reja (TEP)" fill="#7B1FA2" radius={[4, 4, 0, 0]} maxBarSize={44}>
-                        <LabelList dataKey="planned" position="top"
-                          style={{ fontSize: 10, fontWeight: 600, fill: '#7B1FA2' }}
-                          formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
-                      </Bar>
-                    )}
-                    {pvfTab === 'PU' && (
-                      <Bar dataKey="produced" name="Fakt (PU)" fill="#1565C0" radius={[4, 4, 0, 0]} maxBarSize={44}>
-                        <LabelList dataKey="produced" position="top"
-                          style={{ fontSize: 10, fontWeight: 600, fill: '#1565C0' }}
-                          formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
-                      </Bar>
-                    )}
+                    <Legend verticalAlign="bottom" iconSize={10} height={20} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
+                    <Bar dataKey="planned" name="Reja" fill={pvfTab === 'TEP' ? '#7B1FA2' : '#1565C0'} radius={[3, 3, 0, 0]} maxBarSize={32}>
+                      <LabelList dataKey="planned" position="top"
+                        style={{ fontSize: 9, fontWeight: 600, fill: pvfTab === 'TEP' ? '#7B1FA2' : '#1565C0' }}
+                        formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
+                    </Bar>
+                    <Bar dataKey="produced" name="Fakt" fill={pvfTab === 'TEP' ? '#CE93D8' : '#42A5F5'} radius={[3, 3, 0, 0]} maxBarSize={32}>
+                      <LabelList dataKey="produced" position="top"
+                        style={{ fontSize: 9, fontWeight: 600, fill: pvfTab === 'TEP' ? '#CE93D8' : '#42A5F5' }}
+                        formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}

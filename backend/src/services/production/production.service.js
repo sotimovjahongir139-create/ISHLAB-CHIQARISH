@@ -16,6 +16,11 @@ const INCLUDE_FULL = {
   shift: { select: { id: true, name: true, code: true } },
 };
 
+const INCLUDE_PLANS = {
+  ...INCLUDE_FULL,
+  productionFacts: { select: { producedQty: true } },
+};
+
 // --- Production Plans ---
 const getPlans = async (query) => {
   const { page, limit, skip } = getPagination(query);
@@ -26,11 +31,12 @@ const getPlans = async (query) => {
   if (query.modelId) where.productModelId = query.modelId;
   if (query.shiftId) where.shiftId = query.shiftId;
   if (query.status) where.status = query.status;
+  if (query.planType) where.planType = query.planType;
 
   const [data, total] = await Promise.all([
     prisma.productionPlan.findMany({
       where,
-      include: INCLUDE_FULL,
+      include: INCLUDE_PLANS,
       orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
       skip,
       take: limit,
@@ -53,6 +59,7 @@ const createPlan = async (body) => {
       productModelId: body.productModelId || null,
       shiftId: body.shiftId || null,
       notes: body.notes || null,
+      planType: body.planType || 'TEP',
     },
     include: INCLUDE_FULL,
   });
@@ -84,6 +91,7 @@ const getFacts = async (query) => {
   if (query.lineId) where.productionLineId = query.lineId;
   if (query.modelId) where.productModelId = query.modelId;
   if (query.shiftId) where.shiftId = query.shiftId;
+  if (query.linePrefix) where.productionLine = { name: { startsWith: query.linePrefix, mode: 'insensitive' } };
 
   const [data, total] = await Promise.all([
     prisma.productionFact.findMany({

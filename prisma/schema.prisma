@@ -395,6 +395,7 @@ model ProductionPlan {
   id         String     @id @default(cuid())
   planDate   DateTime   @db.Date @map("plan_date")
   plannedQty Int        @map("planned_qty")
+  planType   String     @default("TEP") @map("plan_type")
   status     PlanStatus @default(DRAFT)
   notes      String?
   isDeleted  Boolean    @default(false) @map("is_deleted")
