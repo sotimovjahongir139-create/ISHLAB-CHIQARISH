@@ -2,6 +2,14 @@ const prisma = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { getPagination, getSort } = require('../../utils/pagination');
 
+// Drop NOT NULL on shift_id if it survived from an old deployment
+(async () => {
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE production_plan ALTER COLUMN shift_id DROP NOT NULL`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE production_fact ALTER COLUMN shift_id DROP NOT NULL`);
+  } catch (_) {}
+})();
+
 const INCLUDE_FULL = {
   productionLine: { select: { id: true, name: true, code: true } },
   productModel: { select: { id: true, name: true, code: true, unit: true } },
