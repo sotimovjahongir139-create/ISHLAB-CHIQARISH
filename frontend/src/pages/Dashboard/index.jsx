@@ -20,13 +20,13 @@ import { CHART_COLORS } from '../../constants';
 
 // ── Color tokens for KPI cards ───────────────────────────────────────────────
 const C = {
-  blue:   { accent: '#1565C0', bg: '#E3F2FD' },
-  green:  { accent: '#2E7D32', bg: '#E8F5E9' },
+  blue:   { accent: '#2563EB', bg: '#EFF6FF' },
+  green:  { accent: '#16A34A', bg: '#F0FDF4' },
   orange: { accent: '#E65100', bg: '#FFF3E0' },
-  red:    { accent: '#C62828', bg: '#FFEBEE' },
+  red:    { accent: '#DC2626', bg: '#FEF2F2' },
   teal:   { accent: '#0097A7', bg: '#E0F7FA' },
-  indigo: { accent: '#3949AB', bg: '#E8EAF6' },
-  purple: { accent: '#7B1FA2', bg: '#F3E5F5' },
+  indigo: { accent: '#3949AB', bg: '#EEF2FF' },
+  purple: { accent: '#7B1FA2', bg: '#F5F3FF' },
 };
 
 // ── KPI card ─────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
       {loading ? <Skeleton width={88} height={38} /> : (
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
           <Typography sx={{
-            fontSize: '1.65rem', fontWeight: 700, color: '#1A2332',
+            fontSize: '1.65rem', fontWeight: 700, color: '#0F172A',
             lineHeight: 1, fontVariantNumeric: 'tabular-nums',
           }}>
             {value !== null && value !== undefined ? Number(value).toLocaleString() : '0'}
@@ -83,23 +83,6 @@ const fmtDate = (d, days) => {
   try {
     return days <= 1 ? format(new Date(d), 'HH:mm') : format(new Date(d), 'dd MMM');
   } catch { return d; }
-};
-
-// Fill every date in the period range with 0s so bars always start from the left
-const fillPvfRange = (data, period) => {
-  const today = new Date();
-  const entries = {};
-  for (let i = period - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().split('T')[0];
-    entries[key] = { date: key, planned: 0, produced: 0, good: 0 };
-  }
-  data.forEach((item) => {
-    const key = (item.date || '').toString().slice(0, 10);
-    if (entries[key]) Object.assign(entries[key], item);
-  });
-  return Object.values(entries);
 };
 
 // ── Chart section header ──────────────────────────────────────────────────────
@@ -143,9 +126,9 @@ const ChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-// ── Axis style shared across charts ──────────────────────────────────────────
-const axTick = { fontSize: 10, fill: '#9E9E9E' };
-const gridStyle = { stroke: '#F0F0F0' };
+// ── Shared axis + grid style ──────────────────────────────────────────────────
+const axTick = { fontSize: 10, fill: '#64748B' };
+const gridStyle = { stroke: '#E2E8F0' };
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -163,7 +146,7 @@ const Dashboard = () => {
 
   const [pvfPeriod, setPvfPeriod] = useState(7);
   const [pvfTab, setPvfTab] = useState('TEP');
-  const [pvfData, setPvfData] = useState([]);
+  const [pvfLines, setPvfLines] = useState([]);
   const [pvfLoading, setPvfLoading] = useState(false);
 
   const loadMain = async (d = days) => {
@@ -191,8 +174,8 @@ const Dashboard = () => {
   const loadPvfChart = async (d = pvfPeriod, tab = pvfTab) => {
     setPvfLoading(true);
     try {
-      const r = await svc.getPlanVsFact({ days: d, planType: tab });
-      setPvfData(r.data.data);
+      const r = await svc.getDepartmentComparison({ days: d });
+      setPvfLines(r.data.data || []);
     } catch {} finally { setPvfLoading(false); }
   };
 
@@ -200,10 +183,14 @@ const Dashboard = () => {
   useEffect(() => { loadPvfChart(pvfPeriod, pvfTab); }, [pvfPeriod, pvfTab]);
 
   const trendFormatted = trend.map((d) => ({ ...d, date: fmtDate(d.date, days) }));
-  const pvfFilled = fillPvfRange(pvfData, pvfPeriod);
-  const pvfFormatted = pvfFilled.map((d) => ({ ...d, date: fmtDate(d.date, pvfPeriod) }));
   const pieData = downtime.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
-  const pvfXInterval = pvfPeriod <= 7 ? 0 : Math.floor((pvfPeriod - 1) / 6);
+
+  // Per-line data for Reja vs Fakt chart, filtered by PU or TEP prefix
+  const pvfLinesFiltered = pvfLines.filter((r) =>
+    pvfTab === 'PU' ? /^pu/i.test(r.lineName) : /^tep/i.test(r.lineName)
+  );
+
+  // Liniyalar table: filter by active tab
   const filteredDeptComp = deptComp.filter((r) =>
     lineTab === 'pu' ? /^pu/i.test(r.lineName) : /^tep/i.test(r.lineName)
   );
@@ -272,7 +259,7 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* ── Reja vs Fakt chart ── */}
+      {/* ── Reja vs Fakt per-line grouped bar chart ── */}
       <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
         <Grid item xs={12}>
           <Card>
@@ -293,22 +280,27 @@ const Dashboard = () => {
                   </Box>
                 }
               />
-              {pvfLoading ? <Skeleton variant="rectangular" height={200} /> : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={pvfFormatted} margin={{ top: 22, right: 16, left: 0, bottom: 0 }} barCategoryGap="30%">
+              {pvfLoading ? <Skeleton variant="rectangular" height={220} /> : pvfLinesFiltered.length === 0 ? (
+                <Box sx={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
+                  <Typography variant="body2">Ma'lumot yo'q</Typography>
+                </Box>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={pvfLinesFiltered} margin={{ top: 24, right: 16, left: 0, bottom: 0 }} barCategoryGap="28%" barGap={6}>
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
-                    <XAxis dataKey="date" tick={axTick} axisLine={false} tickLine={false} interval={pvfXInterval} />
-                    <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} padding={{ top: 8 }} />
+                    <XAxis dataKey="lineName" tick={axTick} axisLine={false} tickLine={false} />
+                    <YAxis tick={axTick} axisLine={false} tickLine={false} width={44} padding={{ top: 10 }} />
                     <RTooltip content={<ChartTooltip />} />
-                    <Legend verticalAlign="bottom" iconSize={10} height={20} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-                    <Bar dataKey="planned" name="Reja" fill={pvfTab === 'TEP' ? '#7B1FA2' : '#1565C0'} radius={[3, 3, 0, 0]} maxBarSize={32}>
+                    <Legend verticalAlign="bottom" iconSize={10} height={22}
+                      formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
+                    <Bar dataKey="planned" name="Reja" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={56}>
                       <LabelList dataKey="planned" position="top"
-                        style={{ fontSize: 9, fontWeight: 600, fill: pvfTab === 'TEP' ? '#7B1FA2' : '#1565C0' }}
+                        style={{ fontSize: 10, fontWeight: 700, fill: '#1D4ED8' }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Bar>
-                    <Bar dataKey="produced" name="Fakt" fill={pvfTab === 'TEP' ? '#CE93D8' : '#42A5F5'} radius={[3, 3, 0, 0]} maxBarSize={32}>
+                    <Bar dataKey="produced" name="Fakt" fill="#93C5FD" radius={[4, 4, 0, 0]} maxBarSize={56}>
                       <LabelList dataKey="produced" position="top"
-                        style={{ fontSize: 9, fontWeight: 600, fill: pvfTab === 'TEP' ? '#CE93D8' : '#42A5F5' }}
+                        style={{ fontSize: 10, fontWeight: 700, fill: '#2563EB' }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Bar>
                   </BarChart>
@@ -355,12 +347,12 @@ const Dashboard = () => {
                   <AreaChart data={trendFormatted} margin={{ top: 5, right: 16, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="g-prod" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1565C0" stopOpacity={0.14} />
-                        <stop offset="95%" stopColor="#1565C0" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.14} />
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="g-good" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.14} />
-                        <stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#16A34A" stopOpacity={0.14} />
+                        <stop offset="95%" stopColor="#16A34A" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
@@ -368,13 +360,13 @@ const Dashboard = () => {
                     <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} />
                     <RTooltip content={<ChartTooltip />} />
                     <Legend iconSize={10} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-                    <Area type="monotone" dataKey="produced" stroke="#1565C0" fill="url(#g-prod)"
+                    <Area type="monotone" dataKey="produced" stroke="#2563EB" fill="url(#g-prod)"
                       name="Ishlab chiqarilgan" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                    <Area type="monotone" dataKey="good" stroke="#2E7D32" fill="url(#g-good)"
+                    <Area type="monotone" dataKey="good" stroke="#16A34A" fill="url(#g-good)"
                       name="Yaroqli" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-                    <Area type="monotone" dataKey="defects" stroke="#C62828" fill="none"
+                    <Area type="monotone" dataKey="defects" stroke="#EF4444" fill="none"
                       name="Nuqsonlar" strokeWidth={2} strokeDasharray="5 3"
-                      dot={{ r: 2.5, fill: '#C62828', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                      dot={{ r: 2.5, fill: '#EF4444', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -480,14 +472,15 @@ const Dashboard = () => {
               ) : topDefects.map((d, i) => (
                 <Box key={i} sx={{
                   display: 'flex', alignItems: 'center', gap: 1.5,
-                  p: 1.2, mb: 0.5, bgcolor: 'grey.50', borderRadius: 1.5,
+                  p: 1.2, mb: 0.5, bgcolor: '#F8FAFC', borderRadius: 1.5,
+                  border: '1px solid #E2E8F0',
                 }}>
                   <Box sx={{
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    bgcolor: d.severity === 'CRITICAL' ? '#FFEBEE' : d.severity === 'MAJOR' ? '#FFF3E0' : '#E3F2FD',
+                    bgcolor: d.severity === 'CRITICAL' ? '#FEF2F2' : d.severity === 'MAJOR' ? '#FFF3E0' : '#EFF6FF',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 700, fontSize: 12,
-                    color: d.severity === 'CRITICAL' ? '#C62828' : d.severity === 'MAJOR' ? '#E65100' : '#1565C0',
+                    color: d.severity === 'CRITICAL' ? '#DC2626' : d.severity === 'MAJOR' ? '#E65100' : '#2563EB',
                   }}>
                     {i + 1}
                   </Box>

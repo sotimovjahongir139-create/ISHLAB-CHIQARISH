@@ -42,7 +42,7 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
       sx={{
         width: SIDEBAR_WIDTH,
         flexShrink: 0,
-        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#0D2137', color: '#fff' },
+        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#0F172A', color: '#F8FAFC' },
       }}
     >
       {/* Logo */}
@@ -73,19 +73,19 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               sx={{
                 borderRadius: 1.5, mb: 0.5, py: 0.85,
                 pl: 1.5,
-                color: active ? '#fff' : 'rgba(255,255,255,0.6)',
-                bgcolor: active ? 'rgba(25,118,210,0.28) !important' : 'transparent',
+                color: active ? '#fff' : '#94A3B8',
+                bgcolor: active ? 'rgba(37,99,235,0.22) !important' : 'transparent',
                 borderLeft: '3px solid',
-                borderColor: active ? 'primary.light' : 'transparent',
+                borderColor: active ? '#3B82F6' : 'transparent',
                 transition: 'all 0.15s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.07) !important',
-                  color: '#fff',
-                  borderColor: 'rgba(255,255,255,0.3)',
+                  bgcolor: 'rgba(255,255,255,0.06) !important',
+                  color: '#F8FAFC',
+                  borderColor: 'rgba(255,255,255,0.25)',
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 34, color: 'inherit', opacity: active ? 1 : 0.75 }}>{item.icon}</ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 34, color: active ? '#3B82F6' : '#94A3B8', opacity: active ? 1 : 0.85 }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 600 : 400, letterSpacing: active ? 0.2 : 0 }} />
             </ListItemButton>
           );
