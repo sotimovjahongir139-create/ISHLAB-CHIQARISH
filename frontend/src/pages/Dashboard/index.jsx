@@ -31,7 +31,11 @@ const C = {
 
 // ── KPI card ─────────────────────────────────────────────────────────────────
 const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
-  <Card sx={{ height: '100%', borderLeft: `3px solid ${c.accent}` }}>
+  <Card sx={{
+    height: '100%', borderLeft: `3px solid ${c.accent}`,
+    transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+    '&:hover': { boxShadow: 6, transform: 'translateY(-1px)' },
+  }}>
     <CardContent sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
         <Typography sx={{
@@ -41,7 +45,9 @@ const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
           {title}
         </Typography>
         <Box sx={{
-          width: 38, height: 38, borderRadius: 2, bgcolor: c.bg, flexShrink: 0,
+          width: 40, height: 40, borderRadius: 2.5, flexShrink: 0,
+          background: `linear-gradient(135deg, ${c.bg} 0%, ${c.bg}bb 100%)`,
+          border: `1px solid ${c.accent}28`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.accent,
         }}>
           {icon}
@@ -112,6 +118,31 @@ const PeriodToggle = ({ value, onChange }) => (
   </ToggleButtonGroup>
 );
 
+// ── Dark glass tooltip ────────────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <Box sx={{
+      bgcolor: '#0D1B2A', color: '#E0E8F0', p: '10px 14px', borderRadius: '8px',
+      boxShadow: '0 12px 32px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.07)',
+      minWidth: 148, pointerEvents: 'none',
+    }}>
+      <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', mb: 0.75, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        {label}
+      </Typography>
+      {payload.map((p, i) => (
+        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: i < payload.length - 1 ? 0.5 : 0 }}>
+          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: p.color || p.fill, flexShrink: 0 }} />
+          <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', flexGrow: 1 }}>{p.name}</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#fff', ml: 1, fontVariantNumeric: 'tabular-nums' }}>
+            {typeof p.value === 'number' ? p.value.toLocaleString() : p.value}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+};
+
 // ── Axis style shared across charts ──────────────────────────────────────────
 const axTick = { fontSize: 10, fill: '#9E9E9E' };
 const gridStyle = { stroke: '#F0F0F0' };
@@ -173,6 +204,9 @@ const Dashboard = () => {
   const pvfFormatted = pvfFilled.map((d) => ({ ...d, date: fmtDate(d.date, pvfPeriod) }));
   const pieData = downtime.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
   const pvfXInterval = pvfPeriod <= 7 ? 0 : Math.floor((pvfPeriod - 1) / 6);
+  const filteredDeptComp = deptComp.filter((r) =>
+    lineTab === 'pu' ? /^pu/i.test(r.lineName) : /^tep/i.test(r.lineName)
+  );
 
   return (
     <Box>
@@ -259,13 +293,13 @@ const Dashboard = () => {
                   </Box>
                 }
               />
-              {pvfLoading ? <Skeleton variant="rectangular" height={168} /> : (
-                <ResponsiveContainer width="100%" height={168}>
-                  <BarChart data={pvfFormatted} margin={{ top: 20, right: 16, left: 0, bottom: 0 }} barCategoryGap="30%">
+              {pvfLoading ? <Skeleton variant="rectangular" height={200} /> : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={pvfFormatted} margin={{ top: 22, right: 16, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
                     <XAxis dataKey="date" tick={axTick} axisLine={false} tickLine={false} interval={pvfXInterval} />
-                    <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} />
-                    <RTooltip formatter={(v) => v.toLocaleString()} />
+                    <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} padding={{ top: 8 }} />
+                    <RTooltip content={<ChartTooltip />} />
                     <Legend verticalAlign="bottom" iconSize={10} height={20} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
                     <Bar dataKey="planned" name="Reja" fill={pvfTab === 'TEP' ? '#7B1FA2' : '#1565C0'} radius={[3, 3, 0, 0]} maxBarSize={32}>
                       <LabelList dataKey="planned" position="top"
@@ -332,14 +366,15 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
                     <XAxis dataKey="date" tick={axTick} axisLine={false} tickLine={false} />
                     <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} />
-                    <RTooltip formatter={(v) => v.toLocaleString()} />
+                    <RTooltip content={<ChartTooltip />} />
                     <Legend iconSize={10} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
                     <Area type="monotone" dataKey="produced" stroke="#1565C0" fill="url(#g-prod)"
-                      name="Ishlab chiqarilgan" strokeWidth={2} dot={false} />
+                      name="Ishlab chiqarilgan" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
                     <Area type="monotone" dataKey="good" stroke="#2E7D32" fill="url(#g-good)"
-                      name="Yaroqli" strokeWidth={2} dot={false} />
+                      name="Yaroqli" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                     <Area type="monotone" dataKey="defects" stroke="#C62828" fill="none"
-                      name="Nuqsonlar" strokeWidth={2} strokeDasharray="4 2" dot={false} />
+                      name="Nuqsonlar" strokeWidth={2} strokeDasharray="5 3"
+                      dot={{ r: 2.5, fill: '#C62828', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -385,13 +420,13 @@ const Dashboard = () => {
                           <Skeleton />
                         </TableCell>
                       </TableRow>
-                    ) : deptComp.length === 0 ? (
+                    ) : filteredDeptComp.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={lineTab === 'pu' ? 6 : 4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                           Ma'lumot yo'q
                         </TableCell>
                       </TableRow>
-                    ) : deptComp.map((row) => (
+                    ) : filteredDeptComp.map((row) => (
                       <TableRow key={row.lineId} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight={600}>{row.lineName}</Typography>

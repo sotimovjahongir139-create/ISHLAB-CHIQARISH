@@ -160,7 +160,7 @@ const getDepartmentComparison = async (factoryId, days = 30) => {
       produced,
       good: fact?._sum.goodQty || 0,
       defects: fact?._sum.defectQty || 0,
-      efficiency: Math.round((fact?._avg.efficiency || 0) * 100) / 100,
+      efficiency: planned > 0 ? Math.round(((fact?._sum.goodQty || 0) / planned) * 10000) / 100 : 0,
       fulfillment: planned > 0 ? Math.round((produced / planned) * 10000) / 100 : 0,
     };
   });

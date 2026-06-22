@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import {
-  FileDownload, DateRange,
+  DateRange,
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
   Close, Visibility, Assessment,
@@ -737,10 +737,6 @@ const ReportCard = ({ def, selected, onSelect }) => {
   const [category, setCategory] = useState('PU');
   const [period, setPeriod] = useState('month');
 
-  const handleGenerate = (fmt) => {
-    // TODO: implement export with period + category + format
-  };
-
   return (
     <Card
       sx={{
@@ -793,7 +789,7 @@ const ReportCard = ({ def, selected, onSelect }) => {
       </CardContent>
 
       <Divider />
-      <Box sx={{ p: 1.5, display: 'flex', gap: 1 }}>
+      <Box sx={{ p: 1.5 }}>
         <Button
           size="small"
           variant={selected ? 'contained' : 'outlined'}
@@ -803,12 +799,6 @@ const ReportCard = ({ def, selected, onSelect }) => {
           fullWidth
         >
           Ko'rish
-        </Button>
-        <Button size="small" variant="outlined" startIcon={<FileDownload fontSize="small" />} onClick={() => handleGenerate('excel')}>
-          Excel
-        </Button>
-        <Button size="small" variant="outlined" color="error" startIcon={<FileDownload fontSize="small" />} onClick={() => handleGenerate('pdf')}>
-          PDF
         </Button>
       </Box>
     </Card>
@@ -843,7 +833,7 @@ const Reports = () => {
         <Box>
           <Typography variant="h4">Hisobotlar markazi</Typography>
           <Typography variant="body2" color="text.secondary">
-            Ko'rish tugmasini bosib tegishli dashboard — Excel/PDF eksport
+            Ko'rish tugmasini bosib tegishli hisobotni ko'ring
           </Typography>
         </Box>
       </Box>
@@ -870,6 +860,11 @@ const Reports = () => {
             border: '1px solid', borderColor: `${selectedDef.color}.200`,
             borderTop: '3px solid', borderTopColor: `${selectedDef.color}.main`,
             borderRadius: 2, bgcolor: 'background.default',
+            animation: 'panelSlideIn 0.28s cubic-bezier(0.22,0.61,0.36,1)',
+            '@keyframes panelSlideIn': {
+              from: { opacity: 0, transform: 'translateY(-14px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
