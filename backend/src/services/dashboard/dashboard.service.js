@@ -125,6 +125,7 @@ const getDepartmentComparison = async (factoryId, days = 30) => {
     prisma.productionPlan.groupBy({
       by: ['productionLineId'],
       where: {
+        isDeleted: false,
         planDate: { gte: startOfDay(from) },
         ...(factoryId ? { productionLine: { factoryId } } : {}),
       },
@@ -171,6 +172,7 @@ const getPlanVsFact = async (factoryId, days = 30, planType = null) => {
   const planLineWhere = {};
   if (factoryId) planLineWhere.factoryId = factoryId;
   const planWhere = {
+    isDeleted: false,
     planDate: { gte: startOfDay(from) },
     ...(Object.keys(planLineWhere).length > 0 ? { productionLine: planLineWhere } : {}),
     ...(planType ? { planType } : {}),
