@@ -18,6 +18,9 @@ const MIGRATIONS = [
   // plan_type: PU vs TEP separation
   `ALTER TABLE production_plan ADD COLUMN IF NOT EXISTS plan_type VARCHAR(10) NOT NULL DEFAULT 'TEP'`,
   `UPDATE production_plan SET plan_type='PU' FROM production_lines WHERE production_plan.production_line_id=production_lines.id AND production_lines.name ILIKE 'PU%'`,
+
+  // daily_work_schedule: per-date total work hours for downtime efficiency
+  `CREATE TABLE IF NOT EXISTS daily_work_schedule (id TEXT NOT NULL, date DATE NOT NULL, total_hours NUMERIC(5,2) NOT NULL DEFAULT 8, notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT daily_work_schedule_pkey PRIMARY KEY (id), CONSTRAINT daily_work_schedule_date_key UNIQUE (date))`,
 ];
 
 async function main() {

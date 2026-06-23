@@ -1,4 +1,4 @@
-﻿import {
+import {
   Box, Typography, Card, CardContent, Button, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
@@ -6,9 +6,8 @@
   FormControl, InputLabel, Select, MenuItem, Grid,
   IconButton, Tooltip, Alert,
 } from '@mui/material';
-import { Add, Refresh, CheckCircle, AccessTime, Timer, Delete } from '@mui/icons-material';
-import UzDatePicker from '../../components/UzDatePicker';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { Add, Refresh, CheckCircle, AccessTime, Timer, Delete, Save } from '@mui/icons-material';
+import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import {
   PieChart, Pie, Cell, Tooltip as RTooltip, Legend,
@@ -21,6 +20,8 @@ import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
 const EMPTY_FORM = { productionLineId: '', reasonId: '', shiftId: '', startTime: '', description: '' };
+
+const todayStr = () => new Date().toISOString().split('T')[0];
 
 const fmtDuration = (minutes) => {
   if (!minutes && minutes !== 0) return '—';
@@ -50,7 +51,18 @@ const Downtime = () => {
   const [total, setTotal] = useState(0);
   const [now, setNow] = useState(Date.now());
 
-  const [filters, setFilters] = useState({ status: '', lineId: '', reasonId: '', dateFrom: '', dateTo: '' });
+  // New filter shape: date (required) + liniya + sabab + time range
+  const [filters, setFilters] = useState({
+    date: todayStr(),
+    lineId: '',
+    reasonId: '',
+    timeFrom: '',
+    timeTo: '',
+  });
+
+  // Umumiy ish vaqti state
+  const [workHours, setWorkHours] = useState('');
+  const [workHoursSaving, setWorkHoursSaving] = useState(false);
 
   const [createDialog, setCreateDialog] = useState(false);
   const [resolveDialog, setResolveDialog] = useState({ open: false, item: null, endTime: '' });
@@ -58,7 +70,6 @@ const Downtime = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
-  // Update "now" every 30s so active duration auto-refreshes
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(id);
@@ -73,27 +84,51 @@ const Downtime = () => {
     } catch {}
   }, []);
 
+  const loadWorkSchedule = useCallback(async (date) => {
+    if (!date) return;
+    try {
+      const r = await svc.getWorkSchedule(date);
+      setWorkHours(r.data.data?.totalHours != null ? String(r.data.data.totalHours) : '');
+    } catch {}
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page: page + 1, limit: 15 };
-      if (filters.status) params.status = filters.status;
+      if (filters.date) params.date = filters.date;
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.reasonId) params.reasonId = filters.reasonId;
-      if (filters.dateFrom) params.dateFrom = filters.dateFrom;
-      if (filters.dateTo) params.dateTo = filters.dateTo;
+      if (filters.timeFrom) params.timeFrom = filters.timeFrom;
+      if (filters.timeTo) params.timeTo = filters.timeTo;
       const r = await svc.getDowntimes(params);
       setDowntimes(r.data.data);
       setTotal(r.data.pagination.total);
       setNow(Date.now());
-    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
-    finally { setLoading(false); }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' });
+    } finally { setLoading(false); }
   }, [page, filters]);
 
   useEffect(() => { loadLookups(); }, []);
   useEffect(() => { load(); }, [page, filters]);
+  useEffect(() => { loadWorkSchedule(filters.date); }, [filters.date]);
 
-  const setFilter = (key) => (e) => { setFilters((f) => ({ ...f, [key]: e.target.value })); setPage(0); };
+  const setFilter = (key) => (e) => {
+    setFilters((f) => ({ ...f, [key]: e.target.value }));
+    setPage(0);
+  };
+
+  const handleSaveWorkHours = async () => {
+    if (!workHours || !filters.date) return;
+    setWorkHoursSaving(true);
+    try {
+      await svc.saveWorkSchedule(filters.date, parseFloat(workHours));
+      enqueueSnackbar('Ish vaqti saqlandi', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally { setWorkHoursSaving(false); }
+  };
 
   const handleCreate = async () => {
     setSaving(true);
@@ -141,9 +176,16 @@ const Downtime = () => {
 
   const activeCount = downtimes.filter((d) => d.status === 'ACTIVE').length;
   const totalMinutes = downtimes.reduce((a, d) => a + getDuration(d, now), 0);
+  const totalWorkMin = workHours ? parseFloat(workHours) * 60 : 0;
+  const efficiency = totalWorkMin > 0
+    ? Math.max(0, ((totalWorkMin - totalMinutes) / totalWorkMin) * 100).toFixed(1)
+    : null;
+
+  const hasActiveFilters = filters.lineId || filters.reasonId || filters.timeFrom || filters.timeTo;
 
   return (
     <Box>
+      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <AccessTime sx={{ fontSize: 30, color: 'warning.main' }} />
@@ -164,30 +206,61 @@ const Downtime = () => {
 
       {activeCount > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Hozir <strong>{activeCount}</strong> ta faol toshlanish mavjud — davomiyligi real vaqtda yangilanmoqda
+          Hozir <strong>{activeCount}</strong> ta faol to'xtalish mavjud — davomiyligi real vaqtda yangilanmoqda
         </Alert>
       )}
 
-      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+      {/* Stats + Umumiy ish vaqti row */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip icon={<Timer fontSize="small" />} label={`Jami: ${fmtDuration(totalMinutes)}`} />
         <Chip label={`${total} ta yozuv`} variant="outlined" />
         {activeCount > 0 && <Chip label={`${activeCount} faol`} color="warning" size="small" />}
+        {efficiency !== null && (
+          <Chip
+            label={`Samaradorlik: ${efficiency}%`}
+            color={parseFloat(efficiency) >= 90 ? 'success' : parseFloat(efficiency) >= 75 ? 'warning' : 'error'}
+            size="small"
+          />
+        )}
+
+        {/* Umumiy ish vaqti input */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 0.5 }}>
+          <TextField
+            size="small"
+            type="number"
+            label="Umumiy ish vaqti (soat)"
+            placeholder="Ish vaqti (soat)"
+            value={workHours}
+            onChange={(e) => setWorkHours(e.target.value)}
+            inputProps={{ min: 0, max: 24, step: 0.5 }}
+            sx={{ width: 190 }}
+          />
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={workHoursSaving ? <CircularProgress size={14} /> : <Save fontSize="small" />}
+            onClick={handleSaveWorkHours}
+            disabled={workHoursSaving || !workHours || !filters.date}
+          >
+            Saqlash
+          </Button>
+        </Box>
       </Box>
 
-      {/* Filters */}
+      {/* Filters: Sana | Liniya | Sabab | Dan (vaqt) | Gacha (vaqt) */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Grid container spacing={1.5}>
             <Grid item xs={6} sm={3} md={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select value={filters.status} label="Status" onChange={setFilter('status')}>
-                  <MenuItem value="">Barchasi</MenuItem>
-                  <MenuItem value="ACTIVE">Faol</MenuItem>
-                  <MenuItem value="RESOLVED">Yopildi</MenuItem>
-                  <MenuItem value="CANCELLED">Bekor</MenuItem>
-                </Select>
-              </FormControl>
+              <TextField
+                size="small"
+                fullWidth
+                type="date"
+                label="Sana"
+                InputLabelProps={{ shrink: true }}
+                value={filters.date}
+                onChange={(e) => { setFilters((f) => ({ ...f, date: e.target.value })); setPage(0); }}
+              />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
               <FormControl size="small" fullWidth>
@@ -208,14 +281,36 @@ const Downtime = () => {
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
+              <TextField
+                size="small"
+                fullWidth
+                type="time"
+                label="Dan (vaqt)"
+                InputLabelProps={{ shrink: true }}
+                value={filters.timeFrom}
+                onChange={(e) => { setFilters((f) => ({ ...f, timeFrom: e.target.value })); setPage(0); }}
+              />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
-              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
+              <TextField
+                size="small"
+                fullWidth
+                type="time"
+                label="Gacha (vaqt)"
+                InputLabelProps={{ shrink: true }}
+                value={filters.timeTo}
+                onChange={(e) => { setFilters((f) => ({ ...f, timeTo: e.target.value })); setPage(0); }}
+              />
             </Grid>
-            {(filters.dateFrom || filters.dateTo || filters.status || filters.lineId || filters.reasonId) && (
+            {hasActiveFilters && (
               <Grid item xs={6} sm={3} md={2}>
-                <Button size="small" onClick={() => { setFilters({ status: '', lineId: '', reasonId: '', dateFrom: '', dateTo: '' }); setPage(0); }}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, lineId: '', reasonId: '', timeFrom: '', timeTo: '' }));
+                    setPage(0);
+                  }}
+                >
                   Tozalash
                 </Button>
               </Grid>
@@ -248,7 +343,10 @@ const Downtime = () => {
                 <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Ulush</Typography>
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
-                    <Pie data={byReason.map((d) => ({ name: d.name, value: Math.round(d.minutes) }))} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
+                    <Pie
+                      data={byReason.map((d) => ({ name: d.name, value: Math.round(d.minutes) }))}
+                      cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value"
+                    >
                       {byReason.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Pie>
                     <RTooltip formatter={(v) => [`${fmtDuration(v)}`, 'Davomiyligi']} />
@@ -272,12 +370,18 @@ const Downtime = () => {
                 <TableCell>Davomiyligi</TableCell>
                 <TableCell>Holat</TableCell>
                 <TableCell>Tavsif</TableCell>
-                {(can('downtime:update') || can('downtime:delete') || hasRole('super_admin', 'admin')) && <TableCell align="center">Amallar</TableCell>}
+                {(can('downtime:update') || can('downtime:delete') || hasRole('super_admin', 'admin')) && (
+                  <TableCell align="center">Amallar</TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={26} />
+                  </TableCell>
+                </TableRow>
               ) : downtimes.map((d) => {
                 const durMin = getDuration(d, now);
                 return (
@@ -315,9 +419,7 @@ const Downtime = () => {
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
                           {d.status === 'ACTIVE' && can('downtime:update') && (
                             <Button
-                              size="small"
-                              variant="contained"
-                              color="success"
+                              size="small" variant="contained" color="success"
                               startIcon={<CheckCircle fontSize="small" />}
                               onClick={() => setResolveDialog({ open: true, item: d, endTime: '' })}
                               sx={{ whiteSpace: 'nowrap', fontSize: 12, py: 0.4, px: 1.2 }}
@@ -406,8 +508,7 @@ const Downtime = () => {
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setCreateDialog(false)}>Bekor</Button>
           <Button
-            variant="contained"
-            color="warning"
+            variant="contained" color="warning"
             onClick={handleCreate}
             disabled={saving || !form.productionLineId || !form.reasonId}
           >

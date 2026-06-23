@@ -7,6 +7,8 @@ const { PERMISSIONS } = require('../utils/permissions');
 
 router.use(authenticate);
 
+router.get('/work-schedule', requirePermission(PERMISSIONS.DOWNTIME_READ), ctrl.getWorkSchedule);
+router.put('/work-schedule', requirePermission(PERMISSIONS.DOWNTIME_UPDATE), ctrl.saveWorkSchedule);
 router.get('/reasons', requirePermission(PERMISSIONS.DOWNTIME_READ), ctrl.getReasons);
 router.post('/reasons', requirePermission(PERMISSIONS.DOWNTIME_CREATE), ctrl.createReason);
 router.put('/reasons/:id', requirePermission(PERMISSIONS.DOWNTIME_UPDATE), ctrl.updateReason);

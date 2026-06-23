@@ -3,6 +3,13 @@ const AppError = require('../../utils/AppError');
 const { getPagination, getSort } = require('../../utils/pagination');
 const { endOfDay } = require('date-fns');
 
+// Ensure daily_work_schedule table exists
+(async () => {
+  try {
+    await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS daily_work_schedule (id TEXT NOT NULL, date DATE NOT NULL, total_hours NUMERIC(5,2) NOT NULL DEFAULT 8, notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT daily_work_schedule_pkey PRIMARY KEY (id), CONSTRAINT daily_work_schedule_date_key UNIQUE (date))`);
+  } catch (_) {}
+})();
+
 const getDowntimes = async (query) => {
   const { page, limit, skip } = getPagination(query);
   const where = {};
@@ -10,8 +17,18 @@ const getDowntimes = async (query) => {
   if (query.status) where.status = query.status;
   if (query.lineId) where.productionLineId = query.lineId;
   if (query.reasonId) where.reasonId = query.reasonId;
-  if (query.dateFrom) where.startTime = { gte: new Date(query.dateFrom) };
-  if (query.dateTo) where.startTime = { ...(where.startTime || {}), lte: endOfDay(new Date(query.dateTo)) };
+
+  // Date + optional time-range filter
+  if (query.date) {
+    const dateStr = query.date.slice(0, 10);
+    const fromStr = query.timeFrom ? `${dateStr}T${query.timeFrom}:00` : `${dateStr}T00:00:00`;
+    const toStr   = query.timeTo   ? `${dateStr}T${query.timeTo}:59`   : `${dateStr}T23:59:59`;
+    where.startTime = { gte: new Date(fromStr), lte: new Date(toStr) };
+  } else {
+    // legacy dateFrom/dateTo support (fallback)
+    if (query.dateFrom) where.startTime = { gte: new Date(query.dateFrom) };
+    if (query.dateTo) where.startTime = { ...(where.startTime || {}), lte: endOfDay(new Date(query.dateTo)) };
+  }
 
   const [data, total] = await Promise.all([
     prisma.downtime.findMany({
@@ -118,4 +135,22 @@ const deleteDowntime = async (id) => {
   await prisma.downtime.delete({ where: { id } });
 };
 
-module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons, createReason, updateReason, deleteReason, deleteDowntime };
+const getWorkSchedule = async (date) => {
+  if (!date) return null;
+  const d = new Date(date.slice(0, 10) + 'T00:00:00');
+  return prisma.dailyWorkSchedule.findFirst({ where: { date: d } });
+};
+
+const upsertWorkSchedule = async (date, totalHours) => {
+  if (!date || totalHours === undefined || totalHours === null) throw new AppError('Sana va ish vaqti kiritilishi shart', 400);
+  const d = new Date(date.slice(0, 10) + 'T00:00:00');
+  const hours = parseFloat(totalHours);
+  if (isNaN(hours) || hours < 0 || hours > 24) throw new AppError("Ish vaqti 0–24 soat oralig'ida bo'lishi shart", 400);
+  const existing = await prisma.dailyWorkSchedule.findFirst({ where: { date: d } });
+  if (existing) {
+    return prisma.dailyWorkSchedule.update({ where: { id: existing.id }, data: { totalHours: hours, updatedAt: new Date() } });
+  }
+  return prisma.dailyWorkSchedule.create({ data: { date: d, totalHours: hours } });
+};
+
+module.exports = { getDowntimes, createDowntime, resolveDowntime, getActiveDowntimes, getReasons, createReason, updateReason, deleteReason, deleteDowntime, getWorkSchedule, upsertWorkSchedule };

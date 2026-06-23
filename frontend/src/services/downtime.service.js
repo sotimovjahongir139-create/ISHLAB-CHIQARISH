@@ -9,3 +9,5 @@ export const getDowntimes = (params) => api.get('/downtime', { params });
 export const createDowntime = (data) => api.post('/downtime', data);
 export const resolveDowntime = (id, endTime) => api.put(`/downtime/${id}/resolve`, { endTime });
 export const deleteDowntime = (id) => api.delete(`/downtime/${id}`);
+export const getWorkSchedule = (date) => api.get('/downtime/work-schedule', { params: { date } });
+export const saveWorkSchedule = (date, totalHours) => api.put('/downtime/work-schedule', { date, totalHours });

@@ -46,4 +46,15 @@ const deleteDowntime = async (req, res) => {
   success(res, null, "To'xtalish o'chirildi");
 };
 
-module.exports = { getDowntimes, createDowntime, resolveDowntime, getActive, getReasons, createReason, updateReason, deleteReason, deleteDowntime };
+const getWorkSchedule = async (req, res) => {
+  const date = req.query.date || new Date().toISOString().split('T')[0];
+  const data = await svc.getWorkSchedule(date);
+  success(res, data);
+};
+
+const saveWorkSchedule = async (req, res) => {
+  const data = await svc.upsertWorkSchedule(req.body.date, req.body.totalHours);
+  success(res, data, 'Ish vaqti saqlandi');
+};
+
+module.exports = { getDowntimes, createDowntime, resolveDowntime, getActive, getReasons, createReason, updateReason, deleteReason, deleteDowntime, getWorkSchedule, saveWorkSchedule };

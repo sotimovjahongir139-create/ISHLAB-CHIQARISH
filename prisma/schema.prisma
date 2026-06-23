@@ -963,6 +963,22 @@ model EmployeeWorkHour {
 }
 
 // ============================================================
+// DAILY WORK SCHEDULE
+// ============================================================
+
+model DailyWorkSchedule {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date @unique
+  totalHours Float    @default(8) @map("total_hours")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt      @map("updated_at")
+
+  @@map("daily_work_schedule")
+  @@index([date])
+}
+
+// ============================================================
 // WASTE & PAINT (CHIQINDI)
 // ============================================================
 
