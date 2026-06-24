@@ -69,6 +69,8 @@ const Downtime = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [filterError, setFilterError] = useState(null);
+  const [filterSaving, setFilterSaving] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000);
@@ -117,6 +119,34 @@ const Downtime = () => {
   const setFilter = (key) => (e) => {
     setFilters((f) => ({ ...f, [key]: e.target.value }));
     setPage(0);
+    setFilterError(null);
+  };
+
+  const handleQuickSave = async () => {
+    if (!filters.date || !filters.lineId || !filters.reasonId || !filters.timeFrom || !filters.timeTo) {
+      setFilterError("Barcha maydonlarni to'ldiring!");
+      return;
+    }
+    if (filters.timeTo <= filters.timeFrom) {
+      setFilterError("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak!");
+      return;
+    }
+    setFilterError(null);
+    setFilterSaving(true);
+    try {
+      const startTime = new Date(`${filters.date}T${filters.timeFrom}:00`).toISOString();
+      const endTime = new Date(`${filters.date}T${filters.timeTo}:00`).toISOString();
+      const res = await svc.createDowntime({ productionLineId: filters.lineId, reasonId: filters.reasonId, startTime });
+      await svc.resolveDowntime(res.data.data.id, endTime);
+      enqueueSnackbar("To'xtalish saqlandi!", { variant: 'success' });
+      setFilters((f) => ({ ...f, lineId: '', reasonId: '', timeFrom: '', timeTo: '' }));
+      setPage(0);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally {
+      setFilterSaving(false);
+    }
   };
 
   const handleSaveWorkHours = async () => {
@@ -259,7 +289,7 @@ const Downtime = () => {
                 label="Sana"
                 InputLabelProps={{ shrink: true }}
                 value={filters.date}
-                onChange={(e) => { setFilters((f) => ({ ...f, date: e.target.value })); setPage(0); }}
+                onChange={(e) => { setFilters((f) => ({ ...f, date: e.target.value })); setPage(0); setFilterError(null); }}
               />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
@@ -288,7 +318,7 @@ const Downtime = () => {
                 label="Dan (vaqt)"
                 InputLabelProps={{ shrink: true }}
                 value={filters.timeFrom}
-                onChange={(e) => { setFilters((f) => ({ ...f, timeFrom: e.target.value })); setPage(0); }}
+                onChange={(e) => { setFilters((f) => ({ ...f, timeFrom: e.target.value })); setPage(0); setFilterError(null); }}
               />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
@@ -299,23 +329,45 @@ const Downtime = () => {
                 label="Gacha (vaqt)"
                 InputLabelProps={{ shrink: true }}
                 value={filters.timeTo}
-                onChange={(e) => { setFilters((f) => ({ ...f, timeTo: e.target.value })); setPage(0); }}
+                onChange={(e) => { setFilters((f) => ({ ...f, timeTo: e.target.value })); setPage(0); setFilterError(null); }}
               />
             </Grid>
-            {hasActiveFilters && (
-              <Grid item xs={6} sm={3} md={2}>
+            <Grid item xs={12} sm="auto" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={filterSaving ? <CircularProgress size={14} color="inherit" /> : <Save fontSize="small" />}
+                onClick={handleQuickSave}
+                disabled={filterSaving}
+                sx={{
+                  bgcolor: '#2563eb',
+                  '&:hover': { bgcolor: '#1d4ed8' },
+                  height: 40,
+                  whiteSpace: 'nowrap',
+                  borderRadius: 1,
+                }}
+              >
+                Saqlash
+              </Button>
+              {hasActiveFilters && (
                 <Button
                   size="small"
                   onClick={() => {
                     setFilters((f) => ({ ...f, lineId: '', reasonId: '', timeFrom: '', timeTo: '' }));
                     setPage(0);
+                    setFilterError(null);
                   }}
                 >
                   Tozalash
                 </Button>
-              </Grid>
-            )}
+              )}
+            </Grid>
           </Grid>
+          {filterError && (
+            <Typography variant="caption" color="error" sx={{ mt: 0.75, display: 'block' }}>
+              {filterError}
+            </Typography>
+          )}
         </CardContent>
       </Card>
 
