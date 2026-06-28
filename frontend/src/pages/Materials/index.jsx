@@ -22,7 +22,7 @@ const DEFAULT_CATS = [
 ];
 const UNITS = ['dona', 'kg', 'l', 'm', 'm²', 'm³', 'sm', 'mm', 'g'];
 
-const EMPTY_MAT = { name: '', code: '', unit: 'dona', category: '', minStock: '', maxStock: '', currentStock: '', unitCost: '', description: '' };
+const EMPTY_MAT = { name: '', code: '', unit: 'kg', category: '', minStock: '', maxStock: '', currentStock: '', unitCost: '', description: '', usedQuantity: '', date: '', receivedQuantity: '' };
 const EMPTY_TX = { type: 'IN', quantity: '', unitCost: '', transactionDate: '', reference: '', notes: '' };
 
 const StockBar = ({ current, min, max }) => {
@@ -128,6 +128,8 @@ const Materials = () => {
         maxStock: matForm.maxStock !== '' ? parseFloat(matForm.maxStock) : null,
         currentStock: parseFloat(matForm.currentStock || 0),
         unitCost: matForm.unitCost !== '' ? parseFloat(matForm.unitCost) : null,
+        usedQuantity: matForm.usedQuantity !== '' ? parseFloat(matForm.usedQuantity) : null,
+        receivedQuantity: matForm.receivedQuantity !== '' ? parseFloat(matForm.receivedQuantity) : null,
       };
       if (matDialog.mode === 'create') {
         await svc.createMaterial(body);
@@ -330,12 +332,11 @@ const Materials = () => {
         <DialogTitle>{matDialog.mode === 'create' ? 'Yangi xomashyo' : 'Xomashyoni tahrirlash'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={8}><TextField label="Nomi *" size="small" fullWidth {...Mf('name')} /></Grid>
-            <Grid item xs={4}><TextField label="Kodi *" size="small" fullWidth {...Mf('code')} /></Grid>
+            <Grid item xs={12}><TextField label="Nomi *" size="small" fullWidth {...Mf('name')} /></Grid>
             <Grid item xs={6}>
               <FormControl fullWidth size="small">
-                <InputLabel>Kategoriya *</InputLabel>
-                <Select value={matForm.category} label="Kategoriya *" onChange={(e) => setMatForm((f) => ({ ...f, category: e.target.value }))}>
+                <InputLabel>Turi *</InputLabel>
+                <Select value={matForm.category} label="Turi *" onChange={(e) => setMatForm((f) => ({ ...f, category: e.target.value }))}>
                   {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -348,15 +349,15 @@ const Materials = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={4}><TextField label="Min zaxira" type="number" size="small" fullWidth {...Mf('minStock')} /></Grid>
-            <Grid item xs={4}><TextField label="Max zaxira" type="number" size="small" fullWidth {...Mf('maxStock')} /></Grid>
-            <Grid item xs={4}><TextField label="Joriy zaxira" type="number" size="small" fullWidth {...Mf('currentStock')} /></Grid>
-            <Grid item xs={12}><TextField label="Tavsif" size="small" fullWidth multiline rows={2} {...Mf('description')} /></Grid>
+            <Grid item xs={6}><TextField label="Ishlatilgan hajmi (kg)" type="number" size="small" fullWidth {...Mf('usedQuantity')} /></Grid>
+            <Grid item xs={6}><TextField label="Sana" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Mf('date')} /></Grid>
+            <Grid item xs={6}><TextField label="Qoldiq" type="number" size="small" fullWidth {...Mf('currentStock')} /></Grid>
+            <Grid item xs={6}><TextField label="Qabul qilingan xomashyo" type="number" size="small" fullWidth {...Mf('receivedQuantity')} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setMatDialog({ open: false, mode: 'create', item: null })}>Bekor</Button>
-          <Button variant="contained" onClick={handleSaveMat} disabled={saving || !matForm.name || !matForm.code}>
+          <Button variant="contained" onClick={handleSaveMat} disabled={saving || !matForm.name}>
             {saving ? <CircularProgress size={18} color="inherit" /> : 'Saqlash'}
           </Button>
         </DialogActions>
