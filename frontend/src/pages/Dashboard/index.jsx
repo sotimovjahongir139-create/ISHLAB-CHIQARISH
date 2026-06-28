@@ -185,6 +185,13 @@ const Dashboard = () => {
   const trendFormatted = trend.map((d) => ({ ...d, date: fmtDate(d.date, days) }));
   const pieData = downtime.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
 
+  const monthEfficiency = (() => {
+    const planned = kpis?.month?.planned;
+    const produced = kpis?.month?.produced;
+    if (planned > 0 && produced != null) return ((produced / planned) * 100).toFixed(1);
+    return kpis?.month?.efficiency;
+  })();
+
   // Per-line data for Reja vs Fakt chart, filtered by PU or TEP prefix
   const pvfLinesFiltered = pvfLines.filter((r) =>
     pvfTab === 'PU' ? /^pu/i.test(r.lineName) : /^tep/i.test(r.lineName)
@@ -246,7 +253,7 @@ const Dashboard = () => {
             icon={<Inventory fontSize="small" />} c={C.blue} loading={loading} />
         </Grid>
         <Grid item xs={6} sm={3}>
-          <KPI title="Oylik samaradorlik" value={kpis?.month?.efficiency} unit="%"
+          <KPI title="Oylik samaradorlik" value={monthEfficiency} unit="%"
             icon={<Percent fontSize="small" />} c={C.teal} loading={loading} />
         </Grid>
         <Grid item xs={6} sm={3}>
@@ -326,7 +333,10 @@ const Dashboard = () => {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={46} outerRadius={80}
-                      paddingAngle={3} dataKey="value" strokeWidth={0}>
+                      paddingAngle={3} dataKey="value" strokeWidth={0}
+                      label={({ percent }) => percent > 0.04 ? `${(percent * 100).toFixed(0)}%` : ''}
+                      labelLine={false}
+                      style={{ fontSize: 11, fontWeight: 600, fill: '#1e293b' }}>
                       {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Pie>
                     <RTooltip formatter={(v) => [`${v} daqiqa`, 'Davomiyligi']} />
@@ -361,12 +371,26 @@ const Dashboard = () => {
                     <RTooltip content={<ChartTooltip />} />
                     <Legend iconSize={10} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
                     <Area type="monotone" dataKey="produced" stroke="#2563EB" fill="url(#g-prod)"
-                      name="Ishlab chiqarilgan" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      name="Ishlab chiqarilgan" strokeWidth={2.5}
+                      dot={{ r: 2.5, fill: '#2563EB', strokeWidth: 0 }} activeDot={{ r: 5 }}>
+                      <LabelList dataKey="produced" position="top"
+                        style={{ fontSize: 9, fill: '#2563EB', fontWeight: 600 }}
+                        formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
+                    </Area>
                     <Area type="monotone" dataKey="good" stroke="#16A34A" fill="url(#g-good)"
-                      name="Yaroqli" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                      name="Yaroqli" strokeWidth={2}
+                      dot={{ r: 2.5, fill: '#16A34A', strokeWidth: 0 }} activeDot={{ r: 4 }}>
+                      <LabelList dataKey="good" position="top"
+                        style={{ fontSize: 9, fill: '#16A34A', fontWeight: 600 }}
+                        formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
+                    </Area>
                     <Area type="monotone" dataKey="defects" stroke="#EF4444" fill="none"
                       name="Nuqsonlar" strokeWidth={2} strokeDasharray="5 3"
-                      dot={{ r: 2.5, fill: '#EF4444', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                      dot={{ r: 2.5, fill: '#EF4444', strokeWidth: 0 }} activeDot={{ r: 5 }}>
+                      <LabelList dataKey="defects" position="bottom"
+                        style={{ fontSize: 9, fill: '#EF4444', fontWeight: 600 }}
+                        formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
+                    </Area>
                   </AreaChart>
                 </ResponsiveContainer>
               )}
