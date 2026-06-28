@@ -334,9 +334,20 @@ const Dashboard = () => {
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={46} outerRadius={80}
                       paddingAngle={3} dataKey="value" strokeWidth={0}
-                      label={({ percent }) => percent > 0.04 ? `${(percent * 100).toFixed(0)}%` : ''}
-                      labelLine={false}
-                      style={{ fontSize: 11, fontWeight: 600, fill: '#1e293b' }}>
+                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                        if (percent <= 0.04) return null;
+                        const R = Math.PI / 180;
+                        const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+                        const x = cx + (r + 16) * Math.cos(-midAngle * R);
+                        const y = cy + (r + 16) * Math.sin(-midAngle * R);
+                        return (
+                          <text x={x} y={y} fill="#1e293b" textAnchor="middle"
+                            dominantBaseline="central" fontSize={11} fontWeight={600}>
+                            {`${(percent * 100).toFixed(0)}%`}
+                          </text>
+                        );
+                      }}
+                      labelLine={false}>
                       {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Pie>
                     <RTooltip formatter={(v) => [`${v} daqiqa`, 'Davomiyligi']} />
