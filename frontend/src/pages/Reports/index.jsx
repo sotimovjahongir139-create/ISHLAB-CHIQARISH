@@ -21,6 +21,7 @@ import * as dashSvc from '../../services/dashboard.service';
 import * as matSvc from '../../services/material.service';
 import * as empSvc from '../../services/employee.service';
 import * as eqSvc from '../../services/equipment.service';
+import * as wasteSvc from '../../services/waste.service';
 import { CHART_COLORS } from '../../constants';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -696,15 +697,22 @@ const PeriodPanel = ({ reportKey, days }) => {
 // ─── panel: ATXOT ────────────────────────────────────────────────────────────
 
 const AtxotPanel = ({ days }) => {
-  const [defects, setDefects] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [totalQty, setTotalQty] = useState(0);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([dashSvc.getTopDefects({ days }), dashSvc.getKPIs()])
-      .then(([defR, kpisR]) => {
-        setDefects(defR.data.data);
+    const dateTo = new Date().toISOString().split('T')[0];
+    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    Promise.all([
+      wasteSvc.getWasteRecords({ limit: 1000, dateFrom, dateTo }),
+      dashSvc.getKPIs(),
+    ])
+      .then(([wR, kpisR]) => {
+        setRecords(wR.data.data || []);
+        setTotalQty(wR.data.totalQty || 0);
         setKpis(kpisR.data.data);
       })
       .catch(() => {})
@@ -712,41 +720,46 @@ const AtxotPanel = ({ days }) => {
   }, [days]);
 
   const totalProduced = kpis?.month?.produced || 0;
-  const totalGood = kpis?.month?.good || 0;
-  const totalWaste = Math.max(0, totalProduced - totalGood);
-  const wasteRate = totalProduced > 0 ? ((totalWaste / totalProduced) * 100).toFixed(1) : 0;
-  const defChart = defects.map((d) => ({ name: d.defectType || d.name, count: d.count || d.total }));
+  const wasteRate = totalProduced > 0 ? ((totalQty / totalProduced) * 100).toFixed(1) : 0;
+
+  const byName = records.reduce((acc, r) => {
+    const key = r.name || 'Boshqa';
+    acc[key] = (acc[key] || 0) + parseFloat(r.quantity || 0);
+    return acc;
+  }, {});
+  const chartData = Object.entries(byName)
+    .map(([name, qty]) => ({ name, qty: parseFloat(qty.toFixed(2)) }))
+    .sort((a, b) => b.qty - a.qty);
 
   return (
     <Box>
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[
-          { label: "Jami atxot (oy)", value: totalWaste.toLocaleString(), unit: 'dona', color: 'error' },
+          { label: `Jami atxot (${days} kun)`, value: typeof totalQty === 'number' ? totalQty.toFixed(2) : totalQty, unit: 'kg', color: 'error' },
           { label: "Atxot ulushi", value: wasteRate, unit: '%', color: 'warning' },
-          { label: "Nuqson turlari", value: defects.length, unit: 'xil', color: 'secondary' },
           { label: "Ishlab chiqarildi (oy)", value: totalProduced.toLocaleString(), unit: 'dona', color: 'primary' },
         ].map((s) => (
-          <Grid item xs={6} sm={3} key={s.label}>
+          <Grid item xs={6} sm={4} key={s.label}>
             {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
           </Grid>
         ))}
       </Grid>
       <Grid container spacing={2}>
         <Grid item xs={12}>
-          <ChartCard title="Atxot sabablari bo'yicha" loading={loading}>
-            {defChart.length === 0 ? (
+          <ChartCard title="Atxot sabablari bo'yicha (kg)" loading={loading}>
+            {chartData.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 4, color: 'success.main' }}>
                 <DeleteSweep sx={{ fontSize: 40, mb: 1 }} />
                 <Typography>Atxot qayd etilmagan</Typography>
               </Box>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={defChart} layout="vertical">
+              <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 36)}>
+                <BarChart data={chartData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
-                  <Tooltip formatter={(v) => [`${v} dona`, 'Miqdor']} />
-                  <Bar dataKey="count" name="Atxot" fill="#DC2626" radius={[0, 3, 3, 0]} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} unit=" kg" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={150} />
+                  <Tooltip formatter={(v) => [`${v} kg`, 'Miqdor']} />
+                  <Bar dataKey="qty" name="Atxot (kg)" fill="#DC2626" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
