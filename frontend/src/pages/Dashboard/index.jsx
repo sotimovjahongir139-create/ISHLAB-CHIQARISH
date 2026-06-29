@@ -229,10 +229,6 @@ const Dashboard = () => {
             icon={<Factory fontSize="small" />} c={C.blue} loading={loading} />
         </Grid>
         <Grid item xs={6} sm={4} md={2.4}>
-          <KPI title="Yaroqli mahsulot" value={kpis?.today?.good} unit="dona"
-            icon={<VerifiedUser fontSize="small" />} c={C.green} loading={loading} />
-        </Grid>
-        <Grid item xs={6} sm={4} md={2.4}>
           <KPI title="OEE" value={kpis?.today?.oee} unit="%"
             icon={<Speed fontSize="small" />} c={C.indigo} loading={loading} />
         </Grid>
@@ -255,10 +251,6 @@ const Dashboard = () => {
         <Grid item xs={6} sm={3}>
           <KPI title="Oylik samaradorlik" value={monthEfficiency} unit="%"
             icon={<Percent fontSize="small" />} c={C.teal} loading={loading} />
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <KPI title="Ochiq nuqsonlar" value={kpis?.openDefects} unit="ta"
-            icon={<ReportProblem fontSize="small" />} c={C.red} loading={loading} />
         </Grid>
         <Grid item xs={6} sm={3}>
           <KPI title="Bugungi samaradorlik" value={kpis?.today?.efficiency} unit="%"

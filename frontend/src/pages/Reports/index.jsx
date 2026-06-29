@@ -809,7 +809,6 @@ const REPORT_DEFS = [
   { key: 'DAILY', label: 'Kunlik hisobot', icon: <DateRange />, color: 'primary', hasPuTep: true },
   { key: 'WEEKLY', label: 'Haftalik hisobot', icon: <DateRange />, color: 'secondary', hasPuTep: true },
   { key: 'MONTHLY', label: 'Oylik hisobot', icon: <DateRange />, color: 'info', hasPuTep: true },
-  { key: 'SHIFT', label: 'Smena hisoboti', icon: <Factory />, color: 'warning', hasPuTep: true },
 ];
 
 const ReportCard = ({ def, selected, onSelect }) => {
