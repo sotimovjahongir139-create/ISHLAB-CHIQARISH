@@ -9,7 +9,7 @@ import {
   DateRange,
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
-  Close, Visibility, Assessment,
+  Close, Visibility, Assessment, DeleteSweep,
 } from '@mui/icons-material';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -693,6 +693,70 @@ const PeriodPanel = ({ reportKey, days }) => {
   );
 };
 
+// ─── panel: ATXOT ────────────────────────────────────────────────────────────
+
+const AtxotPanel = ({ days }) => {
+  const [defects, setDefects] = useState([]);
+  const [kpis, setKpis] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([dashSvc.getTopDefects({ days }), dashSvc.getKPIs()])
+      .then(([defR, kpisR]) => {
+        setDefects(defR.data.data);
+        setKpis(kpisR.data.data);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  const totalProduced = kpis?.month?.produced || 0;
+  const totalGood = kpis?.month?.good || 0;
+  const totalWaste = Math.max(0, totalProduced - totalGood);
+  const wasteRate = totalProduced > 0 ? ((totalWaste / totalProduced) * 100).toFixed(1) : 0;
+  const defChart = defects.map((d) => ({ name: d.defectType || d.name, count: d.count || d.total }));
+
+  return (
+    <Box>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: "Jami atxot (oy)", value: totalWaste.toLocaleString(), unit: 'dona', color: 'error' },
+          { label: "Atxot ulushi", value: wasteRate, unit: '%', color: 'warning' },
+          { label: "Nuqson turlari", value: defects.length, unit: 'xil', color: 'secondary' },
+          { label: "Ishlab chiqarildi (oy)", value: totalProduced.toLocaleString(), unit: 'dona', color: 'primary' },
+        ].map((s) => (
+          <Grid item xs={6} sm={3} key={s.label}>
+            {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
+          </Grid>
+        ))}
+      </Grid>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <ChartCard title="Atxot sabablari bo'yicha" loading={loading}>
+            {defChart.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4, color: 'success.main' }}>
+                <DeleteSweep sx={{ fontSize: 40, mb: 1 }} />
+                <Typography>Atxot qayd etilmagan</Typography>
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={defChart} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+                  <Tooltip formatter={(v) => [`${v} dona`, 'Miqdor']} />
+                  <Bar dataKey="count" name="Atxot" fill="#DC2626" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
 // ─── panel dispatcher ────────────────────────────────────────────────────────
 
 const DashboardPanel = ({ reportKey, days }) => {
@@ -703,6 +767,7 @@ const DashboardPanel = ({ reportKey, days }) => {
     case 'MATERIAL':   return <MaterialPanel />;
     case 'EMPLOYEE':   return <EmployeePanel />;
     case 'EQUIPMENT':  return <EquipmentPanel />;
+    case 'ATXOT':      return <AtxotPanel days={days} />;
     default:           return <PeriodPanel reportKey={reportKey} days={days} />;
   }
 };
@@ -727,6 +792,7 @@ const REPORT_DEFS = [
   { key: 'MATERIAL', label: 'Xomashyo', icon: <Inventory />, color: 'warning', hasPuTep: false },
   { key: 'EMPLOYEE', label: 'Xodimlar', icon: <People />, color: 'secondary', hasPuTep: false },
   { key: 'EQUIPMENT', label: 'Uskunalar', icon: <Build />, color: 'info', hasPuTep: false },
+  { key: 'ATXOT', label: 'Atxot', icon: <DeleteSweep />, color: 'error', hasPuTep: false },
   { key: 'DAILY', label: 'Kunlik hisobot', icon: <DateRange />, color: 'primary', hasPuTep: true },
   { key: 'WEEKLY', label: 'Haftalik hisobot', icon: <DateRange />, color: 'secondary', hasPuTep: true },
   { key: 'MONTHLY', label: 'Oylik hisobot', icon: <DateRange />, color: 'info', hasPuTep: true },
