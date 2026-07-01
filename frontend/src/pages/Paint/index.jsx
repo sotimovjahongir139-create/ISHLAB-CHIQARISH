@@ -13,13 +13,12 @@ import * as pSvc from '../../services/production.service';
 import { format } from 'date-fns';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
-const EMPTY_ENTRY = { date: todayStr(), lineId: '', modelId: '', reja: '', fakt: '' };
+const EMPTY_ENTRY = { date: todayStr(), lineId: '', reja: '', fakt: '' };
 
 const Paint = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [records, setRecords] = useState([]);
   const [lines, setLines] = useState([]);
-  const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -31,9 +30,8 @@ const Paint = () => {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [lR, mR] = await Promise.all([pSvc.getLines(), pSvc.getProductModels()]);
+      const lR = await pSvc.getLines();
       setLines(lR.data.data || []);
-      setModels(mR.data.data || []);
     } catch {}
   }, []);
 
@@ -56,22 +54,19 @@ const Paint = () => {
   const setE = (key) => (e) => { setEntry((f) => ({ ...f, [key]: e.target.value })); setEntryError(null); };
 
   const handleSave = async () => {
-    if (!entry.date || !entry.lineId || !entry.modelId || !entry.reja || !entry.fakt) {
+    if (!entry.date || !entry.lineId || !entry.reja || !entry.fakt) {
       setEntryError("Barcha maydonlarni to'ldiring!");
       return;
     }
     setEntryError(null);
     setEntrySaving(true);
     try {
-      const selectedModel = models.find((m) => String(m.id) === String(entry.modelId));
       await svc.createPaintRecord({
-        paintName: selectedModel?.name || entry.modelId,
         date: entry.date,
         departmentId: entry.lineId,
         quantity: parseFloat(entry.fakt),
         planned: parseFloat(entry.reja),
         lineId: entry.lineId,
-        modelId: entry.modelId,
         notes: `Reja: ${entry.reja}`,
       });
       enqueueSnackbar("Ma'lumot saqlandi!", { variant: 'success' });
@@ -136,14 +131,6 @@ const Paint = () => {
               </FormControl>
             </Grid>
             <Grid item xs={6} sm={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Model</InputLabel>
-                <Select value={entry.modelId} label="Model" onChange={setE('modelId')}>
-                  {models.map((m) => <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6} sm={2}>
               <TextField
                 size="small" fullWidth type="number" label="Reja (dona)"
                 inputProps={{ min: 0 }}
@@ -187,7 +174,6 @@ const Paint = () => {
               <TableRow>
                 <TableCell>Sana</TableCell>
                 <TableCell>Liniya</TableCell>
-                <TableCell>Model</TableCell>
                 <TableCell align="right">Reja (dona)</TableCell>
                 <TableCell align="right">Fakt (dona)</TableCell>
                 <TableCell align="center">Amallar</TableCell>
@@ -195,15 +181,12 @@ const Paint = () => {
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
               ) : records.map((r) => (
                 <TableRow key={r.id} hover>
                   <TableCell>{r.date ? format(new Date(r.date), 'd MMM yyyy') : '—'}</TableCell>
                   <TableCell>
                     {r.productionLine?.name || r.department?.name || lines.find((l) => String(l.id) === String(r.lineId || r.departmentId))?.name || '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={600}>{r.paintName || '—'}</Typography>
                   </TableCell>
                   <TableCell align="right">{r.planned != null ? r.planned : '—'}</TableCell>
                   <TableCell align="right">
@@ -219,7 +202,7 @@ const Paint = () => {
                 </TableRow>
               ))}
               {!loading && records.length === 0 && (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>Ma'lumot topilmadi</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>Ma'lumot topilmadi</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
