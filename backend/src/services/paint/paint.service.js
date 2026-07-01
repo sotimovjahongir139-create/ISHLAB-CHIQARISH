@@ -29,7 +29,7 @@ const getPaintRecords = async (query) => {
 const createPaintRecord = async (body) => {
   return prisma.paintRecord.create({
     data: {
-      paintName: body.paintName,
+      paintName: body.paintName || '',
       quantity: parseFloat(body.quantity),
       date: new Date(body.date),
       notes: body.notes,
