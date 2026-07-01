@@ -9,7 +9,7 @@ import {
   DateRange,
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
-  Close, Visibility, Assessment, DeleteSweep,
+  Close, Visibility, Assessment, DeleteSweep, ColorLens,
 } from '@mui/icons-material';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -22,6 +22,7 @@ import * as matSvc from '../../services/material.service';
 import * as empSvc from '../../services/employee.service';
 import * as eqSvc from '../../services/equipment.service';
 import * as wasteSvc from '../../services/waste.service';
+import * as paintSvc from '../../services/paint.service';
 import { CHART_COLORS } from '../../constants';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -694,6 +695,76 @@ const PeriodPanel = ({ reportKey, days }) => {
   );
 };
 
+// ─── panel: KRASKA ───────────────────────────────────────────────────────────
+
+const KraskaPanel = ({ days }) => {
+  const [records, setRecords] = useState([]);
+  const [totalQty, setTotalQty] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dateTo = new Date().toISOString().split('T')[0];
+    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    paintSvc.getPaintRecords({ limit: 1000, dateFrom, dateTo })
+      .then((r) => {
+        setRecords(r.data.data || []);
+        setTotalQty(r.data.totalQty || 0);
+        setTotal(r.data.pagination?.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  const byLine = records.reduce((acc, r) => {
+    const key = r.productionLine?.name || r.department?.name || 'Boshqa';
+    acc[key] = (acc[key] || 0) + parseFloat(r.quantity || 0);
+    return acc;
+  }, {});
+  const chartData = Object.entries(byLine)
+    .map(([name, qty]) => ({ name, qty: parseFloat(qty.toFixed(2)) }))
+    .sort((a, b) => b.qty - a.qty);
+
+  return (
+    <Box>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: `Jami sarflangan (${days} kun)`, value: typeof totalQty === 'number' ? totalQty.toFixed(2) : totalQty, unit: 'kg', color: 'secondary' },
+          { label: "Yozuvlar soni", value: total, unit: 'ta', color: 'primary' },
+          { label: "Liniyalar", value: chartData.length, unit: 'ta', color: 'info' },
+        ].map((s) => (
+          <Grid item xs={6} sm={4} key={s.label}>
+            {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
+          </Grid>
+        ))}
+      </Grid>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <ChartCard title="Liniyalar bo'yicha kraska sarfi (kg)" loading={loading}>
+            {chartData.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                <ColorLens sx={{ fontSize: 40, mb: 1, color: 'secondary.light' }} />
+                <Typography>Ma'lumot topilmadi</Typography>
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 40)}>
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} unit=" kg" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+                  <Tooltip formatter={(v) => [`${v} kg`, 'Sarflangan']} />
+                  <Bar dataKey="qty" name="Kraska (kg)" fill="#7B1FA2" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
 // ─── panel: ATXOT ────────────────────────────────────────────────────────────
 
 const AtxotPanel = ({ days }) => {
@@ -781,6 +852,7 @@ const DashboardPanel = ({ reportKey, days }) => {
     case 'EMPLOYEE':   return <EmployeePanel />;
     case 'EQUIPMENT':  return <EquipmentPanel />;
     case 'ATXOT':      return <AtxotPanel days={days} />;
+    case 'KRASKA':     return <KraskaPanel days={days} />;
     default:           return <PeriodPanel reportKey={reportKey} days={days} />;
   }
 };
@@ -806,6 +878,7 @@ const REPORT_DEFS = [
   { key: 'EMPLOYEE', label: 'Xodimlar', icon: <People />, color: 'secondary', hasPuTep: false },
   { key: 'EQUIPMENT', label: 'Uskunalar', icon: <Build />, color: 'info', hasPuTep: false },
   { key: 'ATXOT', label: 'Atxot', icon: <DeleteSweep />, color: 'error', hasPuTep: false },
+  { key: 'KRASKA', label: 'Kraska', icon: <ColorLens />, color: 'secondary', hasPuTep: false },
   { key: 'DAILY', label: 'Kunlik hisobot', icon: <DateRange />, color: 'primary', hasPuTep: true },
   { key: 'WEEKLY', label: 'Haftalik hisobot', icon: <DateRange />, color: 'secondary', hasPuTep: true },
   { key: 'MONTHLY', label: 'Oylik hisobot', icon: <DateRange />, color: 'info', hasPuTep: true },
