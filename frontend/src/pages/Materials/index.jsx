@@ -11,6 +11,14 @@ import { useSnackbar } from 'notistack';
 import * as svc from '../../services/material.service';
 import { format } from 'date-fns';
 
+const BOLIM_OPTIONS = [
+  "PU xomashyo",
+  "TEP xomashyo",
+  "TPU xomashyo",
+  "PXV xomashyo",
+  "Kraska",
+];
+
 const CATEGORIES = [
   { id: 'RAW_MATERIAL', label: 'Xomashyo' },
   { id: 'COMPONENT', label: 'Komponent' },
@@ -20,7 +28,6 @@ const CATEGORIES = [
   { id: 'OTHER', label: 'Boshqa' },
 ];
 const CAT_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
-const UNITS = ['kg', 'litr', 'dona', 'm', 'm²', 'm³', 'sm', 'mm', 'g'];
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -44,7 +51,7 @@ const getPeriodDates = (period) => {
   return { dateFrom: first.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
 };
 
-const EMPTY_ENTRY = { date: todayStr(), name: '', category: 'RAW_MATERIAL', unit: 'kg', reja: '', fakt: '' };
+const EMPTY_ENTRY = { date: todayStr(), bolim: '', category: 'RAW_MATERIAL', fakt: '' };
 
 const Materials = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -90,23 +97,21 @@ const Materials = () => {
   };
 
   const handleSave = async () => {
-    if (!entry.date || !entry.name || !entry.category || !entry.unit || entry.reja === '' || entry.fakt === '') {
+    if (!entry.date || !entry.bolim || !entry.category || entry.fakt === '') {
       setEntryError("Barcha maydonlarni to'ldiring!");
       return;
     }
     setEntrySaving(true);
     try {
       await svc.createMaterial({
-        name: entry.name,
+        name: entry.bolim,
         code: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         category: entry.category,
-        unit: entry.unit,
-        minStock: parseFloat(entry.reja),
         currentStock: parseFloat(entry.fakt),
         recordDate: entry.date,
       });
       enqueueSnackbar('Saqlandi!', { variant: 'success' });
-      setEntry((f) => ({ ...EMPTY_ENTRY, date: f.date, category: f.category, unit: f.unit }));
+      setEntry((f) => ({ ...EMPTY_ENTRY, date: f.date, bolim: f.bolim, category: f.category }));
       load();
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
@@ -118,10 +123,8 @@ const Materials = () => {
   const openEdit = (item) => {
     setEditForm({
       date: item.recordDate ? item.recordDate.split('T')[0] : todayStr(),
-      name: item.name || '',
+      bolim: item.name || '',
       category: item.category || 'RAW_MATERIAL',
-      unit: item.unit || 'kg',
-      reja: item.minStock ?? '',
       fakt: item.currentStock ?? '',
     });
     setEditDialog({ open: true, item });
@@ -131,10 +134,8 @@ const Materials = () => {
     setEditSaving(true);
     try {
       await svc.updateMaterial(editDialog.item.id, {
-        name: editForm.name,
+        name: editForm.bolim,
         category: editForm.category,
-        unit: editForm.unit,
-        minStock: editForm.reja !== '' ? parseFloat(editForm.reja) : null,
         currentStock: editForm.fakt !== '' ? parseFloat(editForm.fakt) : 0,
         recordDate: editForm.date || null,
       });
@@ -189,14 +190,14 @@ const Materials = () => {
               />
             </Grid>
             <Grid item xs={6} sm={3}>
-              <TextField
-                size="small" fullWidth label="Nomi"
-                value={entry.name}
-                onChange={setE('name')}
-                placeholder="Xomashyo nomi"
-              />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Bo'lim</InputLabel>
+                <Select value={entry.bolim} label="Bo'lim" onChange={setE('bolim')}>
+                  {BOLIM_OPTIONS.map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Grid>
-            <Grid item xs={6} sm={2}>
+            <Grid item xs={6} sm={3}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Kategoriya</InputLabel>
                 <Select value={entry.category} label="Kategoriya" onChange={setE('category')}>
@@ -204,23 +205,7 @@ const Materials = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6} sm={1}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Turi</InputLabel>
-                <Select value={entry.unit} label="Turi" onChange={setE('unit')}>
-                  {UNITS.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6} sm={1}>
-              <TextField
-                size="small" fullWidth label="Reja" type="number"
-                inputProps={{ min: 0, step: 0.01 }}
-                value={entry.reja}
-                onChange={setE('reja')}
-              />
-            </Grid>
-            <Grid item xs={6} sm={1}>
+            <Grid item xs={6} sm={2}>
               <TextField
                 size="small" fullWidth label="Fakt" type="number"
                 inputProps={{ min: 0, step: 0.01 }}
@@ -269,10 +254,8 @@ const Materials = () => {
             <TableHead>
               <TableRow>
                 <TableCell>SANA</TableCell>
-                <TableCell>NOMI</TableCell>
+                <TableCell>BO'LIM</TableCell>
                 <TableCell>KATEGORIYA</TableCell>
-                <TableCell>TURI</TableCell>
-                <TableCell align="right">REJA</TableCell>
                 <TableCell align="right">FAKT</TableCell>
                 <TableCell align="center">AMALLAR</TableCell>
               </TableRow>
@@ -280,7 +263,7 @@ const Materials = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={26} />
                   </TableCell>
                 </TableRow>
@@ -293,8 +276,6 @@ const Materials = () => {
                   </TableCell>
                   <TableCell>{r.name}</TableCell>
                   <TableCell>{CAT_LABEL[r.category] || r.category || '—'}</TableCell>
-                  <TableCell>{r.unit}</TableCell>
-                  <TableCell align="right">{r.minStock ?? '—'}</TableCell>
                   <TableCell align="right">{r.currentStock ?? '—'}</TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
@@ -314,7 +295,7 @@ const Materials = () => {
               ))}
               {!loading && records.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                     Ma'lumot topilmadi
                   </TableCell>
                 </TableRow>
@@ -347,11 +328,16 @@ const Materials = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                size="small" fullWidth label="Nomi"
-                value={editForm.name || ''}
-                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-              />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Bo'lim</InputLabel>
+                <Select
+                  value={editForm.bolim || ''}
+                  label="Bo'lim"
+                  onChange={(e) => setEditForm((f) => ({ ...f, bolim: e.target.value }))}
+                >
+                  {BOLIM_OPTIONS.map((b) => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl size="small" fullWidth>
@@ -364,26 +350,6 @@ const Materials = () => {
                   {CATEGORIES.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Turi</InputLabel>
-                <Select
-                  value={editForm.unit || ''}
-                  label="Turi"
-                  onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))}
-                >
-                  {UNITS.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                size="small" fullWidth label="Reja" type="number"
-                inputProps={{ min: 0, step: 0.01 }}
-                value={editForm.reja ?? ''}
-                onChange={(e) => setEditForm((f) => ({ ...f, reja: e.target.value }))}
-              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -400,7 +366,7 @@ const Materials = () => {
           <Button
             variant="contained"
             onClick={handleEditSave}
-            disabled={editSaving || !editForm.name}
+            disabled={editSaving || !editForm.bolim}
           >
             {editSaving ? <CircularProgress size={18} color="inherit" /> : 'Saqlash'}
           </Button>
