@@ -25,7 +25,8 @@ const getPaintRecords = async (query) => {
 };
 
 const createPaintRecord = async (body) => {
-  const lineId = body.lineId || body.departmentId || null;
+  const lineId = body.lineId || null;
+  if (!lineId) throw Object.assign(new Error('lineId required'), { statusCode: 400 });
   return prisma.paintRecord.create({
     data: {
       paintName: body.paintName || '',
@@ -33,7 +34,7 @@ const createPaintRecord = async (body) => {
       date: new Date(body.date),
       notes: body.notes || null,
       planned: body.planned != null ? parseFloat(body.planned) : null,
-      lineId: lineId || undefined,
+      lineId,
       employeeId: body.employeeId || null,
     },
     include: INCLUDE,
