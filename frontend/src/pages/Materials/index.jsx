@@ -9,6 +9,7 @@ import { Refresh, Edit, Delete, Save, Inventory } from '@mui/icons-material';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/material.service';
+import * as pSvc from '../../services/production.service';
 import { format } from 'date-fns';
 
 const CATEGORIES = [
@@ -60,6 +61,7 @@ const Materials = () => {
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
 
+  const [lines, setLines] = useState([]);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -77,6 +79,10 @@ const Materials = () => {
       setLoading(false);
     }
   }, [page, period]);
+
+  useEffect(() => {
+    pSvc.getLines({ limit: 100 }).then((r) => setLines(r.data.data)).catch(() => {});
+  }, []);
 
   useEffect(() => { setPage(0); }, [period]);
   useEffect(() => { load(); }, [load]);
@@ -180,12 +186,12 @@ const Materials = () => {
               />
             </Grid>
             <Grid item xs={6} sm={3}>
-              <TextField
-                size="small" fullWidth label="Nomi"
-                value={entry.name}
-                onChange={setE('name')}
-                placeholder="Xomashyo nomi"
-              />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Nomi</InputLabel>
+                <Select value={entry.name} label="Nomi" onChange={setE('name')}>
+                  {lines.map((l) => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={6} sm={3}>
               <FormControl size="small" fullWidth>
@@ -318,11 +324,16 @@ const Materials = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                size="small" fullWidth label="Nomi"
-                value={editForm.name || ''}
-                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-              />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Nomi</InputLabel>
+                <Select
+                  value={editForm.name || ''}
+                  label="Nomi"
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                >
+                  {lines.map((l) => <MenuItem key={l.id} value={l.name}>{l.name}</MenuItem>)}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl size="small" fullWidth>
