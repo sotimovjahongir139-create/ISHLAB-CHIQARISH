@@ -15,6 +15,9 @@ const start = async () => {
   try {
     await prisma._connectWithRetry();
     logger.info('Database connected');
+    logger.info('DB host: ' + (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@').split('@')[1]?.split('/')[0]);
+
+    await require('../scripts/migrate')().catch((err) => logger.error('Migration error (non-fatal):', err.message));
 
     const redis = getRedis();
     await redis.connect().catch(() => logger.warn('Redis connection skipped'));

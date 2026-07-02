@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const { PrismaClient } = require('@prisma/client');
 
 // Idempotent SQL migrations — safe to run on every deploy.
@@ -21,6 +22,12 @@ const MIGRATIONS = [
 
   // daily_work_schedule: per-date total work hours for downtime efficiency
   `CREATE TABLE IF NOT EXISTS daily_work_schedule (id TEXT NOT NULL, date DATE NOT NULL, total_hours NUMERIC(5,2) NOT NULL DEFAULT 8, notes TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT daily_work_schedule_pkey PRIMARY KEY (id), CONSTRAINT daily_work_schedule_date_key UNIQUE (date))`,
+
+  // paint_records: planned qty + production line FK (added in v2 schema)
+  `ALTER TABLE paint_records ADD COLUMN IF NOT EXISTS planned DOUBLE PRECISION`,
+  `ALTER TABLE paint_records ADD COLUMN IF NOT EXISTS line_id TEXT`,
+  `ALTER TABLE paint_records ALTER COLUMN department_id DROP NOT NULL`,
+  `ALTER TABLE paint_records ALTER COLUMN paint_name SET DEFAULT ''`,
 ];
 
 async function main() {
@@ -49,7 +56,12 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[migrate] FATAL — server will NOT start:', err.message);
-  process.exit(1);
-});
+// Export for require() from server.js; also runnable as standalone script.
+module.exports = main;
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('[migrate] FATAL — server will NOT start:', err.message);
+    process.exit(1);
+  });
+}
