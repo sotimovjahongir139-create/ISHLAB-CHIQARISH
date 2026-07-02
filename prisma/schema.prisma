@@ -344,6 +344,7 @@ model ProductionLine {
   productionFacts ProductionFact[]
   equipment       Equipment[]
   downtimes       Downtime[]
+  paintRecords    PaintRecord[]
 
   @@map("production_lines")
   @@index([factoryId])
@@ -1005,16 +1006,21 @@ model PaintRecord {
   quantity  Float
   date      DateTime @db.Date
   notes     String?
+  planned   Float?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  departmentId String     @map("department_id")
-  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId String?     @map("department_id")
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  lineId         String?         @map("line_id")
+  productionLine ProductionLine? @relation(fields: [lineId], references: [id])
 
   employeeId   String?    @map("employee_id")
   employee     Employee?  @relation(fields: [employeeId], references: [id])
 
   @@map("paint_records")
   @@index([departmentId])
+  @@index([lineId])
   @@index([date])
 }
