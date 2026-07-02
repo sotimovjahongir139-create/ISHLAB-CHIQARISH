@@ -1,392 +1,424 @@
-﻿import {
-  Box, Typography, Card, CardContent, Button, Chip,
+import {
+  Box, Typography, Card, CardContent, Button, Grid,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControl, InputLabel, Select, MenuItem, Grid,
-  IconButton, Tooltip, LinearProgress, InputAdornment, Tabs, Tab,
+  FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
 } from '@mui/material';
-import { Add, Refresh, Edit, SwapHoriz, Inventory, Search, Warning } from '@mui/icons-material';
+import { Refresh, Edit, Delete, Save, Inventory } from '@mui/icons-material';
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/material.service';
-import * as adminSvc from '../../services/admin.service';
-import { TRANSACTION_TYPE } from '../../constants';
 import { format } from 'date-fns';
-import usePermission from '../../hooks/usePermission';
 
-const DEFAULT_CATS = [
-  { id: 'RAW_MATERIAL', label: 'Xomashyo' }, { id: 'COMPONENT', label: 'Komponent' },
-  { id: 'PACKAGING', label: 'Qadoqlash' }, { id: 'CONSUMABLE', label: 'Sarflanadigan' },
-  { id: 'SPARE_PART', label: 'Ehtiyot qism' }, { id: 'OTHER', label: 'Boshqa' },
+const CATEGORIES = [
+  { id: 'RAW_MATERIAL', label: 'Xomashyo' },
+  { id: 'COMPONENT', label: 'Komponent' },
+  { id: 'PACKAGING', label: 'Qadoqlash' },
+  { id: 'CONSUMABLE', label: 'Sarflanadigan' },
+  { id: 'SPARE_PART', label: 'Ehtiyot qism' },
+  { id: 'OTHER', label: 'Boshqa' },
 ];
-const UNITS = ['dona', 'kg', 'l', 'm', 'm²', 'm³', 'sm', 'mm', 'g'];
+const CAT_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
+const UNITS = ['kg', 'litr', 'dona', 'm', 'm²', 'm³', 'sm', 'mm', 'g'];
 
-const EMPTY_MAT = { name: '', code: '', unit: 'kg', category: '', minStock: '', maxStock: '', currentStock: '', unitCost: '', description: '', usedQuantity: '', date: '', receivedQuantity: '' };
-const EMPTY_TX = { type: 'IN', quantity: '', unitCost: '', transactionDate: '', reference: '', notes: '' };
+const todayStr = () => new Date().toISOString().split('T')[0];
 
-const StockBar = ({ current, min, max }) => {
-  if (!max) return <Typography variant="caption">{current?.toLocaleString() || 0}</Typography>;
-  const pct = Math.min((current / max) * 100, 100);
-  const color = current <= (min || 0) ? 'error' : current <= (max * 0.3) ? 'warning' : 'success';
-  return (
-    <Box sx={{ minWidth: 120 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
-        <Typography variant="caption" fontWeight={700}>{current?.toLocaleString()}</Typography>
-        <Typography variant="caption" color="text.secondary">/{max?.toLocaleString()}</Typography>
-      </Box>
-      <LinearProgress variant="determinate" value={pct} color={color} sx={{ height: 5, borderRadius: 3 }} />
-    </Box>
-  );
+const getPeriodDates = (period) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (period === 'kunlik') {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const d = yesterday.toISOString().split('T')[0];
+    return { dateFrom: d, dateTo: d };
+  }
+  if (period === 'haftalik') {
+    const dow = today.getDay();
+    const diff = dow === 0 ? 6 : dow - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - diff);
+    return { dateFrom: monday.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
+  }
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { dateFrom: first.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
 };
+
+const EMPTY_ENTRY = { date: todayStr(), name: '', category: 'RAW_MATERIAL', unit: 'kg', reja: '', fakt: '' };
 
 const Materials = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const { can } = usePermission();
-  const [tab, setTab] = useState(0);
-  const [categories, setCategories] = useState(DEFAULT_CATS);
 
-  const [materials, setMaterials] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
-  const [catFilter, setCatFilter] = useState('');
+  const [period, setPeriod] = useState('kunlik');
 
-  const [selectedMat, setSelectedMat] = useState(null);
+  const [entry, setEntry] = useState(EMPTY_ENTRY);
+  const [entryError, setEntryError] = useState(null);
+  const [entrySaving, setEntrySaving] = useState(false);
 
-  const [matDialog, setMatDialog] = useState({ open: false, mode: 'create', item: null });
-  const [txDialog, setTxDialog] = useState({ open: false, mat: null });
-  const [matForm, setMatForm] = useState(EMPTY_MAT);
-  const [txForm, setTxForm] = useState(EMPTY_TX);
-  const [saving, setSaving] = useState(false);
+  const [editDialog, setEditDialog] = useState({ open: false, item: null });
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: page + 1, limit: 15 };
-      if (search) params.search = search;
-      if (catFilter) params.category = catFilter;
-      const r = await svc.getMaterials(params);
-      setMaterials(r.data.data);
-      setTotal(r.data.pagination.total);
-    } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
-    finally { setLoading(false); }
-  }, [page, search, catFilter]);
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      const r = await svc.getMaterials({ page: page + 1, limit: 20, dateFrom, dateTo });
+      const body = r.data;
+      setRecords(body.data);
+      setTotal(body.pagination?.total ?? body.total ?? 0);
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [page, period]);
 
-  const loadTx = useCallback(async () => {
-    if (!selectedMat) return;
-    setLoading(true);
+  useEffect(() => { setPage(0); }, [period]);
+  useEffect(() => { load(); }, [load]);
+
+  const setE = (key) => (e) => {
+    setEntry((f) => ({ ...f, [key]: e.target.value }));
+    setEntryError(null);
+  };
+
+  const handleSave = async () => {
+    if (!entry.date || !entry.name || !entry.category || !entry.unit || entry.reja === '' || entry.fakt === '') {
+      setEntryError("Barcha maydonlarni to'ldiring!");
+      return;
+    }
+    setEntrySaving(true);
     try {
-      const r = await svc.getTransactions(selectedMat.id, { page: page + 1, limit: 15 });
-      setTransactions(r.data.data);
-      setTotal(r.data.pagination.total);
-    } catch {}
-    finally { setLoading(false); }
-  }, [selectedMat, page]);
-
-  useEffect(() => {
-    adminSvc.getLookup('material_categories').then((r) => {
-      const items = r.data.data;
-      if (items && items.length > 0) setCategories(items);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (tab === 0) { setPage(0); load(); }
-    else if (tab === 1) { setPage(0); loadTx(); }
-  }, [tab, search, catFilter]);
-
-  useEffect(() => {
-    if (tab === 0) load();
-    else loadTx();
-  }, [page]);
-
-  const openCreate = () => {
-    setMatForm(EMPTY_MAT);
-    setMatDialog({ open: true, mode: 'create', item: null });
-  };
-
-  const openEdit = (m) => {
-    setMatForm({ name: m.name, code: m.code, unit: m.unit, category: m.category, minStock: m.minStock ?? '', maxStock: m.maxStock ?? '', currentStock: m.currentStock, unitCost: m.unitCost ?? '', description: m.description || '' });
-    setMatDialog({ open: true, mode: 'edit', item: m });
-  };
-
-  const openTransactions = (m) => {
-    setSelectedMat(m);
-    setTab(1);
-    setPage(0);
-  };
-
-  const handleSaveMat = async () => {
-    setSaving(true);
-    try {
-      const body = {
-        ...matForm,
-        minStock: matForm.minStock !== '' ? parseFloat(matForm.minStock) : null,
-        maxStock: matForm.maxStock !== '' ? parseFloat(matForm.maxStock) : null,
-        currentStock: parseFloat(matForm.currentStock || 0),
-        unitCost: matForm.unitCost !== '' ? parseFloat(matForm.unitCost) : null,
-        usedQuantity: matForm.usedQuantity !== '' ? parseFloat(matForm.usedQuantity) : null,
-        receivedQuantity: matForm.receivedQuantity !== '' ? parseFloat(matForm.receivedQuantity) : null,
-      };
-      if (matDialog.mode === 'create') {
-        await svc.createMaterial(body);
-        enqueueSnackbar('Xomashyo qo\'shildi', { variant: 'success' });
-      } else {
-        await svc.updateMaterial(matDialog.item.id, body);
-        enqueueSnackbar('Yangilandi', { variant: 'success' });
-      }
-      setMatDialog({ open: false, mode: 'create', item: null });
-      load();
-    } catch (err) { enqueueSnackbar(err.response?.data?.message || 'Xatolik', { variant: 'error' }); }
-    finally { setSaving(false); }
-  };
-
-  const handleSaveTx = async () => {
-    setSaving(true);
-    try {
-      await svc.addTransaction(txDialog.mat.id, {
-        ...txForm,
-        quantity: parseFloat(txForm.quantity),
-        unitCost: txForm.unitCost !== '' ? parseFloat(txForm.unitCost) : undefined,
-        transactionDate: txForm.transactionDate || new Date().toISOString(),
+      await svc.createMaterial({
+        name: entry.name,
+        code: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        category: entry.category,
+        unit: entry.unit,
+        minStock: parseFloat(entry.reja),
+        currentStock: parseFloat(entry.fakt),
+        recordDate: entry.date,
       });
-      enqueueSnackbar('Harakat qayd etildi', { variant: 'success' });
-      setTxDialog({ open: false, mat: null });
+      enqueueSnackbar('Saqlandi!', { variant: 'success' });
+      setEntry((f) => ({ ...EMPTY_ENTRY, date: f.date, category: f.category, unit: f.unit }));
       load();
-      if (selectedMat?.id === txDialog.mat.id) loadTx();
-    } catch (err) { enqueueSnackbar(err.response?.data?.message || 'Xatolik', { variant: 'error' }); }
-    finally { setSaving(false); }
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally {
+      setEntrySaving(false);
+    }
   };
 
-  const Mf = (key) => ({ value: matForm[key], onChange: (e) => setMatForm((f) => ({ ...f, [key]: e.target.value })) });
-  const Tf = (key) => ({ value: txForm[key], onChange: (e) => setTxForm((f) => ({ ...f, [key]: e.target.value })) });
+  const openEdit = (item) => {
+    setEditForm({
+      date: item.recordDate ? item.recordDate.split('T')[0] : todayStr(),
+      name: item.name || '',
+      category: item.category || 'RAW_MATERIAL',
+      unit: item.unit || 'kg',
+      reja: item.minStock ?? '',
+      fakt: item.currentStock ?? '',
+    });
+    setEditDialog({ open: true, item });
+  };
 
-  const lowStock = materials.filter((m) => m.minStock != null && m.currentStock <= m.minStock);
+  const handleEditSave = async () => {
+    setEditSaving(true);
+    try {
+      await svc.updateMaterial(editDialog.item.id, {
+        name: editForm.name,
+        category: editForm.category,
+        unit: editForm.unit,
+        minStock: editForm.reja !== '' ? parseFloat(editForm.reja) : null,
+        currentStock: editForm.fakt !== '' ? parseFloat(editForm.fakt) : 0,
+        recordDate: editForm.date || null,
+      });
+      enqueueSnackbar('Yangilandi', { variant: 'success' });
+      setEditDialog({ open: false, item: null });
+      load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      await svc.deleteMaterial(deleteDialog.item.id);
+      enqueueSnackbar("O'chirildi", { variant: 'success' });
+      setDeleteDialog({ open: false, item: null });
+      load();
+    } catch (err) {
+      enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <Box>
+      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Inventory sx={{ fontSize: 30, color: 'primary.main' }} />
           <Box>
             <Typography variant="h4">Xomashyo</Typography>
-            <Typography variant="body2" color="text.secondary">Zaxira boshqaruvi va harakatlar</Typography>
+            <Typography variant="body2" color="text.secondary">Xomashyo sarfi kunlik qayd</Typography>
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button startIcon={<Refresh />} onClick={() => tab === 0 ? load() : loadTx()}>Yangilash</Button>
-          {tab === 0 && can('materials:create') && (
-            <Button variant="contained" startIcon={<Add />} onClick={openCreate}>Xomashyo qo'shish</Button>
-          )}
-        </Box>
+        <Button startIcon={<Refresh />} onClick={load}>Yangilash</Button>
       </Box>
 
-      {lowStock.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-          {lowStock.slice(0, 3).map((m) => (
-            <Chip key={m.id} icon={<Warning fontSize="small" />} label={`${m.name}: ${m.currentStock} ${m.unit}`} color="warning" size="small" />
-          ))}
-          {lowStock.length > 3 && <Chip label={`+${lowStock.length - 3} ta kam zaxira`} color="warning" size="small" />}
-        </Box>
-      )}
-
-      <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); }} sx={{ mb: 2 }}>
-        <Tab label="Xomashyolar" />
-        <Tab label={selectedMat ? `Harakatlar: ${selectedMat.name}` : 'Harakatlar'} disabled={!selectedMat} />
-      </Tabs>
-
-      {tab === 0 && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Grid container spacing={1.5} alignItems="center">
-              <Grid item xs={12} sm={5}>
-                <TextField
-                  placeholder="Nomi yoki kodi..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-                  size="small"
-                  fullWidth
-                  InputProps={{ startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment> }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>Kategoriya</InputLabel>
-                  <Select value={catFilter} label="Kategoriya" onChange={(e) => { setCatFilter(e.target.value); setPage(0); }}>
-                    <MenuItem value="">Barchasi</MenuItem>
-                    {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
+      {/* Quick-entry row */}
+      <Card sx={{ mb: 1.5 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Grid container spacing={1.5} alignItems="flex-end">
+            <Grid item xs={6} sm={2}>
+              <TextField
+                size="small" fullWidth type="date" label="Sana"
+                InputLabelProps={{ shrink: true }}
+                value={entry.date}
+                onChange={setE('date')}
+              />
             </Grid>
-          </CardContent>
-        </Card>
-      )}
+            <Grid item xs={6} sm={3}>
+              <TextField
+                size="small" fullWidth label="Nomi"
+                value={entry.name}
+                onChange={setE('name')}
+                placeholder="Xomashyo nomi"
+              />
+            </Grid>
+            <Grid item xs={6} sm={2}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Kategoriya</InputLabel>
+                <Select value={entry.category} label="Kategoriya" onChange={setE('category')}>
+                  {CATEGORIES.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={1}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Turi</InputLabel>
+                <Select value={entry.unit} label="Turi" onChange={setE('unit')}>
+                  {UNITS.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={1}>
+              <TextField
+                size="small" fullWidth label="Reja" type="number"
+                inputProps={{ min: 0, step: 0.01 }}
+                value={entry.reja}
+                onChange={setE('reja')}
+              />
+            </Grid>
+            <Grid item xs={6} sm={1}>
+              <TextField
+                size="small" fullWidth label="Fakt" type="number"
+                inputProps={{ min: 0, step: 0.01 }}
+                value={entry.fakt}
+                onChange={setE('fakt')}
+              />
+            </Grid>
+            <Grid item xs={12} sm="auto">
+              <Button
+                variant="contained" size="small"
+                startIcon={entrySaving ? <CircularProgress size={14} color="inherit" /> : <Save fontSize="small" />}
+                onClick={handleSave}
+                disabled={entrySaving}
+                sx={{ height: 40, whiteSpace: 'nowrap', bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' } }}
+              >
+                Saqlash
+              </Button>
+            </Grid>
+          </Grid>
+          {entryError && (
+            <Typography variant="caption" color="error" sx={{ mt: 0.75, display: 'block' }}>
+              {entryError}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
 
+      {/* Period buttons */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        {[['kunlik', 'Kunlik'], ['haftalik', 'Haftalik'], ['oylik', 'Oylik']].map(([p, label]) => (
+          <Button
+            key={p} size="small"
+            variant={period === p ? 'contained' : 'outlined'}
+            onClick={() => setPeriod(p)}
+            sx={{ textTransform: 'none', minWidth: 80 }}
+          >
+            {label}
+          </Button>
+        ))}
+      </Box>
+
+      {/* History table */}
       <Card>
         <TableContainer>
           <Table size="small">
             <TableHead>
               <TableRow>
-                {tab === 0 ? (
-                  <>
-                    <TableCell>Xomashyo</TableCell>
-                    <TableCell>Kodi</TableCell>
-                    <TableCell>Kategoriya</TableCell>
-                    <TableCell>Ombor</TableCell>
-                    <TableCell>Zaxira</TableCell>
-                    <TableCell align="right">Narx</TableCell>
-                    <TableCell align="right">Amallar</TableCell>
-                  </>
-                ) : (
-                  <>
-                    <TableCell>Sana</TableCell>
-                    <TableCell>Turi</TableCell>
-                    <TableCell align="right">Miqdor</TableCell>
-                    <TableCell align="right">Narx/birlik</TableCell>
-                    <TableCell align="right">Oldingi</TableCell>
-                    <TableCell align="right">Keyingi</TableCell>
-                    <TableCell>Izoh</TableCell>
-                  </>
-                )}
+                <TableCell>SANA</TableCell>
+                <TableCell>NOMI</TableCell>
+                <TableCell>KATEGORIYA</TableCell>
+                <TableCell>TURI</TableCell>
+                <TableCell align="right">REJA</TableCell>
+                <TableCell align="right">FAKT</TableCell>
+                <TableCell align="center">AMALLAR</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={26} /></TableCell></TableRow>
-              ) : tab === 0 ? (
-                materials.map((m) => {
-                  const isLow = m.minStock != null && m.currentStock <= m.minStock;
-                  return (
-                    <TableRow key={m.id} hover sx={{ bgcolor: isLow ? 'error.50' : 'inherit' }}>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {isLow && <Warning fontSize="small" color="error" />}
-                          <Typography variant="body2" fontWeight={600}>{m.name}</Typography>
-                        </Box>
-                        {m.description && <Typography variant="caption" color="text.secondary">{m.description}</Typography>}
-                      </TableCell>
-                      <TableCell sx={{ fontFamily: 'monospace' }}>{m.code}</TableCell>
-                      <TableCell><Chip label={categories.find((c) => c.id === m.category)?.label || m.category} size="small" variant="outlined" /></TableCell>
-                      <TableCell>{m.warehouse?.name || '—'}</TableCell>
-                      <TableCell><StockBar current={m.currentStock} min={m.minStock} max={m.maxStock} /> <Typography variant="caption" color="text.secondary">{m.unit}</Typography></TableCell>
-                      <TableCell align="right">
-                        {m.unitCost ? <Typography variant="body2">{m.unitCost.toLocaleString()} so'm</Typography> : '—'}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                          {can('materials:update') && (
-                            <>
-                              <Tooltip title="Harakat qo'shish">
-                                <IconButton size="small" color="primary" onClick={() => { setTxDialog({ open: true, mat: m }); setTxForm({ ...EMPTY_TX, transactionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm") }); }}>
-                                  <SwapHoriz fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Tahrirlash">
-                                <IconButton size="small" onClick={() => openEdit(m)}><Edit fontSize="small" /></IconButton>
-                              </Tooltip>
-                            </>
-                          )}
-                          <Tooltip title="Harakatlarni ko'rish">
-                            <IconButton size="small" onClick={() => openTransactions(m)}><SwapHoriz fontSize="small" color="action" /></IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                transactions.map((tx) => (
-                  <TableRow key={tx.id} hover>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{format(new Date(tx.transactionDate || tx.createdAt), 'dd.MM.yyyy HH:mm')}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={TRANSACTION_TYPE[tx.type]?.label || tx.type}
-                        color={TRANSACTION_TYPE[tx.type]?.color || 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>{tx.quantity.toLocaleString()}</TableCell>
-                    <TableCell align="right">{tx.unitCost ? tx.unitCost.toLocaleString() : '—'}</TableCell>
-                    <TableCell align="right" sx={{ color: 'text.secondary' }}>{tx.stockBefore?.toLocaleString()}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>{tx.stockAfter?.toLocaleString()}</TableCell>
-                    <TableCell><Typography variant="caption">{tx.notes || tx.reference || '—'}</Typography></TableCell>
-                  </TableRow>
-                ))
-              )}
-              {!loading && (tab === 0 ? materials : transactions).length === 0 && (
-                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>Ma'lumot topilmadi</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={26} />
+                  </TableCell>
+                </TableRow>
+              ) : records.map((r) => (
+                <TableRow key={r.id} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    {r.recordDate
+                      ? format(new Date(r.recordDate), 'dd.MM.yyyy')
+                      : format(new Date(r.createdAt), 'dd.MM.yyyy')}
+                  </TableCell>
+                  <TableCell>{r.name}</TableCell>
+                  <TableCell>{CAT_LABEL[r.category] || r.category || '—'}</TableCell>
+                  <TableCell>{r.unit}</TableCell>
+                  <TableCell align="right">{r.minStock ?? '—'}</TableCell>
+                  <TableCell align="right">{r.currentStock ?? '—'}</TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                      <Tooltip title="Tahrirlash">
+                        <IconButton size="small" onClick={() => openEdit(r)}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="O'chirish">
+                        <IconButton size="small" color="error" onClick={() => setDeleteDialog({ open: true, item: r })}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!loading && records.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                    Ma'lumot topilmadi
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </TableContainer>
-        <TablePagination component="div" count={total} page={page} rowsPerPage={15} rowsPerPageOptions={[15]}
-          onPageChange={(_, p) => setPage(p)} labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`} />
+        <TablePagination
+          component="div"
+          count={total}
+          page={page}
+          rowsPerPage={20}
+          rowsPerPageOptions={[20]}
+          onPageChange={(_, p) => setPage(p)}
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`}
+        />
       </Card>
 
-      {/* Create/Edit material dialog */}
-      <Dialog open={matDialog.open} onClose={() => setMatDialog({ open: false, mode: 'create', item: null })} maxWidth="sm" fullWidth>
-        <DialogTitle>{matDialog.mode === 'create' ? 'Yangi xomashyo' : 'Xomashyoni tahrirlash'}</DialogTitle>
+      {/* Edit dialog */}
+      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, item: null })} maxWidth="sm" fullWidth>
+        <DialogTitle>Xomashyo tahrirlash</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}><TextField label="Nomi *" size="small" fullWidth {...Mf('name')} /></Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Turi *</InputLabel>
-                <Select value={matForm.category} label="Turi *" onChange={(e) => setMatForm((f) => ({ ...f, category: e.target.value }))}>
-                  {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                size="small" fullWidth type="date" label="Sana"
+                InputLabelProps={{ shrink: true }}
+                value={editForm.date || ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                size="small" fullWidth label="Nomi"
+                value={editForm.name || ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Kategoriya</InputLabel>
+                <Select
+                  value={editForm.category || ''}
+                  label="Kategoriya"
+                  onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                >
+                  {CATEGORIES.map((c) => <MenuItem key={c.id} value={c.id}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Birlik *</InputLabel>
-                <Select value={matForm.unit} label="Birlik *" onChange={(e) => setMatForm((f) => ({ ...f, unit: e.target.value }))}>
+            <Grid item xs={12} sm={6}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Turi</InputLabel>
+                <Select
+                  value={editForm.unit || ''}
+                  label="Turi"
+                  onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))}
+                >
                   {UNITS.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}><TextField label="Ishlatilgan hajmi (kg)" type="number" size="small" fullWidth {...Mf('usedQuantity')} /></Grid>
-            <Grid item xs={6}><TextField label="Sana" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Mf('date')} /></Grid>
-            <Grid item xs={6}><TextField label="Qoldiq" type="number" size="small" fullWidth {...Mf('currentStock')} /></Grid>
-            <Grid item xs={6}><TextField label="Qabul qilingan xomashyo" type="number" size="small" fullWidth {...Mf('receivedQuantity')} /></Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                size="small" fullWidth label="Reja" type="number"
+                inputProps={{ min: 0, step: 0.01 }}
+                value={editForm.reja ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, reja: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                size="small" fullWidth label="Fakt" type="number"
+                inputProps={{ min: 0, step: 0.01 }}
+                value={editForm.fakt ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, fakt: e.target.value }))}
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setMatDialog({ open: false, mode: 'create', item: null })}>Bekor</Button>
-          <Button variant="contained" onClick={handleSaveMat} disabled={saving || !matForm.name}>
-            {saving ? <CircularProgress size={18} color="inherit" /> : 'Saqlash'}
+          <Button onClick={() => setEditDialog({ open: false, item: null })}>Bekor</Button>
+          <Button
+            variant="contained"
+            onClick={handleEditSave}
+            disabled={editSaving || !editForm.name}
+          >
+            {editSaving ? <CircularProgress size={18} color="inherit" /> : 'Saqlash'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Transaction dialog */}
-      <Dialog open={txDialog.open} onClose={() => setTxDialog({ open: false, mat: null })} maxWidth="sm" fullWidth>
-        <DialogTitle>Xomashyo harakati — {txDialog.mat?.name}</DialogTitle>
+      {/* Delete confirm */}
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>O'chirishni tasdiqlang</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Harakat turi *</InputLabel>
-                <Select value={txForm.type} label="Harakat turi *" onChange={(e) => setTxForm((f) => ({ ...f, type: e.target.value }))}>
-                  {Object.entries(TRANSACTION_TYPE).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}><TextField label="Miqdor *" type="number" size="small" fullWidth {...Tf('quantity')} /></Grid>
-            <Grid item xs={6}><TextField label="Narx/birlik (so'm)" type="number" size="small" fullWidth {...Tf('unitCost')} /></Grid>
-            <Grid item xs={12}><TextField label="Sana" type="datetime-local" size="small" fullWidth InputLabelProps={{ shrink: true }} {...Tf('transactionDate')} /></Grid>
-            <Grid item xs={12}><TextField label="Havola (hujjat raqami)" size="small" fullWidth {...Tf('reference')} /></Grid>
-            <Grid item xs={12}><TextField label="Izoh" size="small" fullWidth multiline rows={2} {...Tf('notes')} /></Grid>
-          </Grid>
+          <Typography>
+            <strong>{deleteDialog.item?.name}</strong> yozuvi o'chiriladi. Tasdiqlaysizmi?
+          </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setTxDialog({ open: false, mat: null })}>Bekor</Button>
-          <Button variant="contained" onClick={handleSaveTx} disabled={saving || !txForm.quantity}>
-            {saving ? <CircularProgress size={18} color="inherit" /> : 'Kiritish'}
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, item: null })}>Bekor</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} disabled={deleteLoading}>
+            {deleteLoading ? <CircularProgress size={18} color="inherit" /> : "O'chirish"}
           </Button>
         </DialogActions>
       </Dialog>

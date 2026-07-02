@@ -2,6 +2,12 @@ const prisma = require('../../config/database');
 const AppError = require('../../utils/AppError');
 const { getPagination, getSort } = require('../../utils/pagination');
 
+const endOfDay = (d) => {
+  const r = new Date(d);
+  r.setHours(23, 59, 59, 999);
+  return r;
+};
+
 const getMaterials = async (query) => {
   const { page, limit, skip } = getPagination(query);
   const where = { isDeleted: false };
@@ -16,12 +22,16 @@ const getMaterials = async (query) => {
     { minStock: { not: null } },
     { currentStock: { lte: prisma.$queryRaw`"min_stock"` } },
   ];
+  if (query.dateFrom) where.recordDate = { gte: new Date(query.dateFrom) };
+  if (query.dateTo) {
+    where.recordDate = { ...(where.recordDate || {}), lte: endOfDay(new Date(query.dateTo)) };
+  }
 
   const [data, total] = await Promise.all([
     prisma.material.findMany({
       where,
       include: { warehouse: { select: { id: true, name: true, code: true } } },
-      orderBy: getSort(query, ['name', 'currentStock', 'createdAt']),
+      orderBy: getSort(query, ['name', 'currentStock', 'createdAt']) || [{ recordDate: 'desc' }, { createdAt: 'desc' }],
       skip,
       take: limit,
     }),
@@ -39,11 +49,12 @@ const createMaterial = async (body) => {
       description: body.description,
       unit: body.unit,
       category: body.category,
-      minStock: body.minStock,
-      maxStock: body.maxStock,
-      currentStock: body.currentStock || 0,
+      minStock: body.minStock != null ? parseFloat(body.minStock) : null,
+      maxStock: body.maxStock != null ? parseFloat(body.maxStock) : null,
+      currentStock: body.currentStock != null ? parseFloat(body.currentStock) : 0,
       unitCost: body.unitCost,
-      warehouseId: body.warehouseId,
+      recordDate: body.recordDate ? new Date(body.recordDate) : null,
+      ...(body.warehouseId ? { warehouseId: body.warehouseId } : {}),
     },
     include: { warehouse: true },
   });
@@ -60,11 +71,22 @@ const updateMaterial = async (id, body) => {
       description: body.description,
       unit: body.unit,
       category: body.category,
-      minStock: body.minStock,
-      maxStock: body.maxStock,
+      minStock: body.minStock != null ? parseFloat(body.minStock) : null,
+      maxStock: body.maxStock != null ? parseFloat(body.maxStock) : null,
       unitCost: body.unitCost,
+      ...(body.currentStock != null ? { currentStock: parseFloat(body.currentStock) } : {}),
+      ...(body.recordDate !== undefined ? { recordDate: body.recordDate ? new Date(body.recordDate) : null } : {}),
     },
     include: { warehouse: true },
+  });
+};
+
+const deleteMaterial = async (id) => {
+  const material = await prisma.material.findFirst({ where: { id, isDeleted: false } });
+  if (!material) throw new AppError('Xomashyo topilmadi', 404);
+  return prisma.material.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
   });
 };
 
@@ -121,4 +143,4 @@ const getTransactions = async (materialId, query) => {
   return { data, total, page, limit };
 };
 
-module.exports = { getMaterials, createMaterial, updateMaterial, addTransaction, getTransactions };
+module.exports = { getMaterials, createMaterial, updateMaterial, deleteMaterial, addTransaction, getTransactions };

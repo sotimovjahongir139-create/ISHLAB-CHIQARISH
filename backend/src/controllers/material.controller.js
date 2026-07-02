@@ -16,6 +16,11 @@ const updateMaterial = async (req, res) => {
   success(res, data, 'Xomashyo yangilandi');
 };
 
+const deleteMaterial = async (req, res) => {
+  await svc.deleteMaterial(req.params.id);
+  success(res, null, 'Xomashyo o\'chirildi');
+};
+
 const addTransaction = async (req, res) => {
   const data = await svc.addTransaction(req.params.id, req.body, req.user.id);
   created(res, data, 'Harakat qayd etildi');
@@ -26,4 +31,4 @@ const getTransactions = async (req, res) => {
   paginated(res, data, total, page, limit);
 };
 
-module.exports = { getMaterials, createMaterial, updateMaterial, addTransaction, getTransactions };
+module.exports = { getMaterials, createMaterial, updateMaterial, deleteMaterial, addTransaction, getTransactions };

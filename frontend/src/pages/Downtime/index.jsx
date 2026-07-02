@@ -23,6 +23,26 @@ const EMPTY_FORM = { productionLineId: '', reasonId: '', shiftId: '', startTime:
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
+const getPeriodDates = (period) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (period === 'kunlik') {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const d = yesterday.toISOString().split('T')[0];
+    return { dateFrom: d, dateTo: d };
+  }
+  if (period === 'haftalik') {
+    const dow = today.getDay();
+    const diff = dow === 0 ? 6 : dow - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - diff);
+    return { dateFrom: monday.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
+  }
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { dateFrom: first.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
+};
+
 const fmtDuration = (minutes) => {
   if (!minutes && minutes !== 0) return '—';
   const m = Math.max(0, Math.round(minutes));
@@ -66,6 +86,7 @@ const Downtime = () => {
 
   const [createDialog, setCreateDialog] = useState(false);
   const [resolveDialog, setResolveDialog] = useState({ open: false, item: null, endTime: '' });
+  const [period, setPeriod] = useState('kunlik');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -98,11 +119,9 @@ const Downtime = () => {
     setLoading(true);
     try {
       const params = { page: page + 1, limit: 15 };
-      if (filters.date) params.date = filters.date;
-      if (filters.lineId) params.lineId = filters.lineId;
-      if (filters.reasonId) params.reasonId = filters.reasonId;
-      if (filters.timeFrom) params.timeFrom = filters.timeFrom;
-      if (filters.timeTo) params.timeTo = filters.timeTo;
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      params.dateFrom = dateFrom;
+      params.dateTo = dateTo;
       const r = await svc.getDowntimes(params);
       setDowntimes(r.data.data);
       setTotal(r.data.pagination.total);
@@ -110,10 +129,10 @@ const Downtime = () => {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [page, filters]);
+  }, [page, period]);
 
   useEffect(() => { loadLookups(); }, []);
-  useEffect(() => { load(); }, [page, filters]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => { loadWorkSchedule(filters.date); }, [filters.date]);
 
   const setFilter = (key) => (e) => {
@@ -370,6 +389,20 @@ const Downtime = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Period buttons */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        {[['kunlik', 'Kunlik'], ['haftalik', 'Haftalik'], ['oylik', 'Oylik']].map(([p, label]) => (
+          <Button
+            key={p} size="small"
+            variant={period === p ? 'contained' : 'outlined'}
+            onClick={() => { setPeriod(p); setPage(0); }}
+            sx={{ textTransform: 'none', minWidth: 80 }}
+          >
+            {label}
+          </Button>
+        ))}
+      </Box>
 
       {byReason.length > 0 && (
         <Grid container spacing={2} sx={{ mb: 2 }}>

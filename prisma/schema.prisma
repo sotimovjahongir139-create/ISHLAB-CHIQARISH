@@ -651,8 +651,9 @@ model Material {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt      @map("updated_at")
 
-  warehouseId String    @map("warehouse_id")
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  recordDate  DateTime? @db.Date @map("record_date")
+  warehouseId String?   @map("warehouse_id")
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
   transactions MaterialTransaction[]
 

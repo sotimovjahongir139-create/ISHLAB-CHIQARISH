@@ -28,6 +28,10 @@ const MIGRATIONS = [
   `ALTER TABLE paint_records ADD COLUMN IF NOT EXISTS line_id TEXT`,
   `ALTER TABLE paint_records ALTER COLUMN department_id DROP NOT NULL`,
   `ALTER TABLE paint_records ALTER COLUMN paint_name SET DEFAULT ''`,
+
+  // materials: make warehouse_id nullable + add record_date for daily log entries
+  `ALTER TABLE materials ALTER COLUMN warehouse_id DROP NOT NULL`,
+  `ALTER TABLE materials ADD COLUMN IF NOT EXISTS record_date DATE`,
 ];
 
 async function main() {
