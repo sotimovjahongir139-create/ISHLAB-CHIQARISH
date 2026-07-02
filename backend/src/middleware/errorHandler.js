@@ -27,7 +27,8 @@ const errorHandler = (err, req, res, next) => {
     message = 'Jadval topilmadi — migratsiya bajarilmagan bo\'lishi mumkin';
   } else if (err.code === 'P2022') {
     statusCode = 500;
-    message = `Ustun topilmadi: ${err.meta?.column || ''} — migratsiya bajarilmagan bo\'lishi mumkin`;
+    const col = err.meta?.column || err.meta?.field || '';
+    message = `Ustun topilmadi: ${col} — migratsiya bajarilmagan bo\'lishi mumkin`;
   } else if (err.code && err.code.startsWith('P')) {
     statusCode = 400;
     message = `Ma\'lumotlar bazasi xatosi (${err.code})`;
