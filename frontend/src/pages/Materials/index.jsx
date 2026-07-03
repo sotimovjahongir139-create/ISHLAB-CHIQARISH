@@ -20,35 +20,36 @@ const CATEGORIES = [
   "Kraska",
 ];
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const localDateStr = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const todayStr = () => localDateStr(new Date());
 
 const getPeriodDates = (period) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const todayLocal = localDateStr(now);
+
   if (period === 'kunlik') {
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const d = yesterday.toISOString().split('T')[0];
-    return { dateFrom: d, dateTo: d };
+    return { dateFrom: todayLocal, dateTo: todayLocal };
   }
   if (period === 'haftalik') {
-    const dow = today.getDay();
+    const dow = now.getDay();
     const diff = dow === 0 ? 6 : dow - 1;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - diff);
-    return { dateFrom: monday.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+    return { dateFrom: localDateStr(monday), dateTo: todayLocal };
   }
   if (period === 'otgan_oy') {
-    const now = new Date();
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    return {
-      dateFrom: prevMonthStart.toISOString().split('T')[0],
-      dateTo: prevMonthEnd.toISOString().split('T')[0],
-    };
+    return { dateFrom: localDateStr(prevMonthStart), dateTo: localDateStr(prevMonthEnd) };
   }
-  const first = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { dateFrom: first.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
+  // oylik — current month day 1 → today
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { dateFrom: localDateStr(firstOfMonth), dateTo: todayLocal };
 };
 
 const EMPTY_ENTRY = { date: todayStr(), name: '', category: 'PU xomashyo', fakt: '' };
