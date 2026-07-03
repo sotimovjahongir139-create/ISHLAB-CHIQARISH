@@ -5,26 +5,48 @@ const getKPIs = async (factoryId, date = new Date()) => {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
   const monthStart = startOfMonth(date);
-  const monthEnd = endOfMonth(date);
 
   const where = factoryId
     ? { productionLine: { factoryId } }
     : {};
 
-  const [todayFacts, monthFacts, activeDowntimes, openDefects, employeeCount] = await Promise.all([
+  const [
+    todayFacts, monthFacts, activeDowntimes, openDefects, employeeCount,
+    todayDowntimes, monthDowntimes,
+    todayXomashyo, monthXomashyo,
+    todayKraska, monthKraska,
+  ] = await Promise.all([
     prisma.productionFact.aggregate({
       where: { ...where, factDate: { gte: dayStart, lte: dayEnd } },
       _sum: { producedQty: true, defectQty: true, goodQty: true },
       _avg: { efficiency: true, oee: true },
     }),
     prisma.productionFact.aggregate({
-      where: { ...where, factDate: { gte: monthStart, lte: monthEnd } },
+      where: { ...where, factDate: { gte: monthStart, lte: dayEnd } },
       _sum: { producedQty: true, goodQty: true },
-      _avg: { efficiency: true },
+      _avg: { efficiency: true, oee: true },
     }),
     prisma.downtime.count({ where: { status: 'ACTIVE', ...(factoryId ? { productionLine: { factoryId } } : {}) } }),
     prisma.defect.count({ where: { status: { in: ['OPEN', 'IN_REVIEW'] } } }),
     prisma.employee.count({ where: { isDeleted: false } }).catch(() => 0),
+    prisma.downtime.count({ where: { startTime: { gte: dayStart, lte: dayEnd } } }),
+    prisma.downtime.count({ where: { startTime: { gte: monthStart, lte: dayEnd } } }),
+    prisma.material.aggregate({
+      where: { isDeleted: false, recordDate: { gte: dayStart, lte: dayEnd } },
+      _sum: { currentStock: true },
+    }).catch(() => ({ _sum: { currentStock: 0 } })),
+    prisma.material.aggregate({
+      where: { isDeleted: false, recordDate: { gte: monthStart, lte: dayEnd } },
+      _sum: { currentStock: true },
+    }).catch(() => ({ _sum: { currentStock: 0 } })),
+    prisma.paintRecord.aggregate({
+      where: { date: { gte: dayStart, lte: dayEnd } },
+      _sum: { quantity: true },
+    }).catch(() => ({ _sum: { quantity: 0 } })),
+    prisma.paintRecord.aggregate({
+      where: { date: { gte: monthStart, lte: dayEnd } },
+      _sum: { quantity: true },
+    }).catch(() => ({ _sum: { quantity: 0 } })),
   ]);
 
   return {
@@ -34,11 +56,18 @@ const getKPIs = async (factoryId, date = new Date()) => {
       good: todayFacts._sum.goodQty || 0,
       efficiency: Math.round((todayFacts._avg.efficiency || 0) * 100) / 100,
       oee: Math.round((todayFacts._avg.oee || 0) * 100) / 100,
+      downtimes: todayDowntimes,
+      xomashyo: Math.round((todayXomashyo._sum.currentStock || 0) * 100) / 100,
+      kraska: Math.round((todayKraska._sum.quantity || 0) * 100) / 100,
     },
     month: {
       produced: monthFacts._sum.producedQty || 0,
       good: monthFacts._sum.goodQty || 0,
       efficiency: Math.round((monthFacts._avg.efficiency || 0) * 100) / 100,
+      oee: Math.round((monthFacts._avg.oee || 0) * 100) / 100,
+      downtimes: monthDowntimes,
+      xomashyo: Math.round((monthXomashyo._sum.currentStock || 0) * 100) / 100,
+      kraska: Math.round((monthKraska._sum.quantity || 0) * 100) / 100,
     },
     activeDowntimes,
     openDefects,

@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   Factory, VerifiedUser, AccessTime, ReportProblem,
-  CheckCircle, People, Speed, Inventory, Percent,
+  CheckCircle, Speed, Inventory, Palette,
 } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import {
@@ -29,40 +29,39 @@ const C = {
   purple: { accent: '#7B1FA2', bg: '#F5F3FF' },
 };
 
-// ── KPI card ─────────────────────────────────────────────────────────────────
+// ── KPI card (compact) ───────────────────────────────────────────────────────
 const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
   <Card sx={{
     height: '100%', borderLeft: `3px solid ${c.accent}`,
-    transition: 'box-shadow 0.2s ease, transform 0.15s ease',
-    '&:hover': { boxShadow: 6, transform: 'translateY(-1px)' },
+    transition: 'box-shadow 0.15s ease',
+    '&:hover': { boxShadow: 3 },
   }}>
-    <CardContent sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
+    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.75 }}>
         <Typography sx={{
-          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.055em',
-          fontSize: '0.67rem', color: 'text.secondary', lineHeight: 1.4, pr: 0.5,
+          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
+          fontSize: '0.65rem', color: 'text.secondary', lineHeight: 1.3, pr: 0.5,
         }}>
           {title}
         </Typography>
         <Box sx={{
-          width: 40, height: 40, borderRadius: 2.5, flexShrink: 0,
-          background: `linear-gradient(135deg, ${c.bg} 0%, ${c.bg}bb 100%)`,
-          border: `1px solid ${c.accent}28`,
+          width: 26, height: 26, borderRadius: 1.5, flexShrink: 0,
+          bgcolor: c.bg, border: `1px solid ${c.accent}28`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.accent,
         }}>
           {icon}
         </Box>
       </Box>
-      {loading ? <Skeleton width={88} height={38} /> : (
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+      {loading ? <Skeleton width={66} height={26} /> : (
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.4 }}>
           <Typography sx={{
-            fontSize: '1.65rem', fontWeight: 700, color: '#0F172A',
+            fontSize: '1.3rem', fontWeight: 700, color: '#0F172A',
             lineHeight: 1, fontVariantNumeric: 'tabular-nums',
           }}>
             {value !== null && value !== undefined ? Number(value).toLocaleString() : '0'}
           </Typography>
           {unit && (
-            <Typography variant="body2" color="text.secondary" fontWeight={400}>{unit}</Typography>
+            <Typography sx={{ fontSize: '0.7rem' }} color="text.secondary">{unit}</Typography>
           )}
         </Box>
       )}
@@ -185,13 +184,6 @@ const Dashboard = () => {
   const trendFormatted = trend.map((d) => ({ ...d, date: fmtDate(d.date, days) }));
   const pieData = downtime.map((d) => ({ name: d.reason, value: Math.round(d.totalMinutes) }));
 
-  const monthEfficiency = (() => {
-    const planned = kpis?.month?.planned;
-    const produced = kpis?.month?.produced;
-    if (planned > 0 && produced != null) return ((produced / planned) * 100).toFixed(1);
-    return kpis?.month?.efficiency;
-  })();
-
   // Per-line data for Reja vs Fakt chart, filtered by PU or TEP prefix
   const pvfLinesFiltered = pvfLines.filter((r) =>
     pvfTab === 'PU' ? /^pu/i.test(r.lineName) : /^tep/i.test(r.lineName)
@@ -222,39 +214,57 @@ const Dashboard = () => {
         </FormControl>
       </Box>
 
-      {/* ── Row 1: Primary KPIs (today) ── */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={6} sm={4} md={2.4}>
-          <KPI title="Bugungi chiqarish" value={kpis?.today?.produced} unit="dona"
+      {/* ── Kunlik ko'rsatkichlar ── */}
+      <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.07em', mb: 0.75 }}>
+        Kunlik ko'rsatkichlar
+      </Typography>
+      <Grid container spacing={1} sx={{ mb: 1.25 }}>
+        <Grid item xs={2.4}>
+          <KPI title="Ishlab chiqarish" value={kpis?.today?.produced} unit="dona"
             icon={<Factory fontSize="small" />} c={C.blue} loading={loading} />
         </Grid>
-        <Grid item xs={6} sm={4} md={2.4}>
+        <Grid item xs={2.4}>
           <KPI title="OEE" value={kpis?.today?.oee} unit="%"
             icon={<Speed fontSize="small" />} c={C.indigo} loading={loading} />
         </Grid>
-        <Grid item xs={6} sm={4} md={2.4}>
-          <KPI title="To'xtalishlar (faol)" value={kpis?.activeDowntimes} unit="ta"
+        <Grid item xs={2.4}>
+          <KPI title="To'xtalishlar" value={kpis?.today?.downtimes} unit="ta"
             icon={<AccessTime fontSize="small" />} c={C.orange} loading={loading} />
         </Grid>
-        <Grid item xs={6} sm={4} md={2.4}>
-          <KPI title="Xodimlar" value={kpis?.employees} unit="kishi"
-            icon={<People fontSize="small" />} c={C.teal} loading={loading} />
+        <Grid item xs={2.4}>
+          <KPI title="Xomashyo sarfi" value={kpis?.today?.xomashyo} unit="kg"
+            icon={<Inventory fontSize="small" />} c={C.teal} loading={loading} />
+        </Grid>
+        <Grid item xs={2.4}>
+          <KPI title="Kraska sarfi" value={kpis?.today?.kraska} unit="kg"
+            icon={<Palette fontSize="small" />} c={C.purple} loading={loading} />
         </Grid>
       </Grid>
 
-      {/* ── Row 2: Monthly KPIs ── */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={3}>
-          <KPI title="Oylik ishlab chiqarish" value={kpis?.month?.produced} unit="dona"
-            icon={<Inventory fontSize="small" />} c={C.blue} loading={loading} />
+      {/* ── Oylik ko'rsatkichlar ── */}
+      <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.07em', mb: 0.75 }}>
+        Oylik ko'rsatkichlar
+      </Typography>
+      <Grid container spacing={1} sx={{ mb: 2 }}>
+        <Grid item xs={2.4}>
+          <KPI title="Ishlab chiqarish" value={kpis?.month?.produced} unit="dona"
+            icon={<Factory fontSize="small" />} c={C.blue} loading={loading} />
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <KPI title="Oylik samaradorlik" value={monthEfficiency} unit="%"
-            icon={<Percent fontSize="small" />} c={C.teal} loading={loading} />
+        <Grid item xs={2.4}>
+          <KPI title="OEE" value={kpis?.month?.oee} unit="%"
+            icon={<Speed fontSize="small" />} c={C.indigo} loading={loading} />
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <KPI title="Bugungi samaradorlik" value={kpis?.today?.efficiency} unit="%"
-            icon={<CheckCircle fontSize="small" />} c={C.green} loading={loading} />
+        <Grid item xs={2.4}>
+          <KPI title="To'xtalishlar" value={kpis?.month?.downtimes} unit="ta"
+            icon={<AccessTime fontSize="small" />} c={C.orange} loading={loading} />
+        </Grid>
+        <Grid item xs={2.4}>
+          <KPI title="Xomashyo sarfi" value={kpis?.month?.xomashyo} unit="kg"
+            icon={<Inventory fontSize="small" />} c={C.teal} loading={loading} />
+        </Grid>
+        <Grid item xs={2.4}>
+          <KPI title="Kraska sarfi" value={kpis?.month?.kraska} unit="kg"
+            icon={<Palette fontSize="small" />} c={C.purple} loading={loading} />
         </Grid>
       </Grid>
 
