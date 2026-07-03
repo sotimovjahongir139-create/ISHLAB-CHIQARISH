@@ -18,6 +18,25 @@ import { useSnackbar } from 'notistack';
 import * as svc from '../../services/dashboard.service';
 import { CHART_COLORS } from '../../constants';
 
+// ── Compute exact date range for Reja vs Fakt chart period buttons ───────────
+const getPvfDates = (period) => {
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  if (period === 1) {
+    return { startDate: dayStart.toISOString(), endDate: dayEnd.toISOString() };
+  }
+  if (period === 7) {
+    const dow = now.getDay();
+    const diff = dow === 0 ? 6 : dow - 1;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff, 0, 0, 0);
+    return { startDate: monday.toISOString(), endDate: dayEnd.toISOString() };
+  }
+  // oy (30)
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+  return { startDate: firstOfMonth.toISOString(), endDate: dayEnd.toISOString() };
+};
+
 // ── Color tokens for KPI cards ───────────────────────────────────────────────
 const C = {
   blue:   { accent: '#2563EB', bg: '#EFF6FF' },
@@ -173,7 +192,8 @@ const Dashboard = () => {
   const loadPvfChart = async (d = pvfPeriod, tab = pvfTab) => {
     setPvfLoading(true);
     try {
-      const r = await svc.getDepartmentComparison({ days: d });
+      const { startDate, endDate } = getPvfDates(d);
+      const r = await svc.getDepartmentComparison({ startDate, endDate });
       setPvfLines(r.data.data || []);
     } catch {} finally { setPvfLoading(false); }
   };

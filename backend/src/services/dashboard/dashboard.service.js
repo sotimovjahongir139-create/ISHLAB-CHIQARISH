@@ -147,15 +147,22 @@ const getTopDefects = async (days = 30) => {
   }));
 };
 
-const getDepartmentComparison = async (factoryId, days = 30) => {
-  const from = subDays(new Date(), days);
+const getDepartmentComparison = async (factoryId, days = 30, startDate = null, endDate = null) => {
+  let from, to;
+  if (startDate && endDate) {
+    from = startOfDay(new Date(startDate));
+    to = endOfDay(new Date(endDate));
+  } else {
+    from = startOfDay(subDays(new Date(), days));
+    to = endOfDay(new Date());
+  }
 
   const [plans, facts] = await Promise.all([
     prisma.productionPlan.groupBy({
       by: ['productionLineId'],
       where: {
         isDeleted: false,
-        planDate: { gte: startOfDay(from) },
+        planDate: { gte: from, lte: to },
         ...(factoryId ? { productionLine: { factoryId } } : {}),
       },
       _sum: { plannedQty: true },
@@ -163,7 +170,7 @@ const getDepartmentComparison = async (factoryId, days = 30) => {
     prisma.productionFact.groupBy({
       by: ['productionLineId'],
       where: {
-        factDate: { gte: startOfDay(from) },
+        factDate: { gte: from, lte: to },
         ...(factoryId ? { productionLine: { factoryId } } : {}),
       },
       _sum: { producedQty: true, goodQty: true, defectQty: true },

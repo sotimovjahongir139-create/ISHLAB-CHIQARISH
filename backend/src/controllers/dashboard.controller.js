@@ -31,7 +31,8 @@ const getTopDefects = async (req, res) => {
 const getDepartmentComparison = async (req, res) => {
   const factoryId = req.query.factoryId || req.user.factoryId;
   const days = parseInt(req.query.days) || 30;
-  const data = await dashboardService.getDepartmentComparison(factoryId, days);
+  const { startDate, endDate } = req.query;
+  const data = await dashboardService.getDepartmentComparison(factoryId, days, startDate || null, endDate || null);
   success(res, data);
 };
 
