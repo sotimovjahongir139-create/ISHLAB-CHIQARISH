@@ -27,6 +27,9 @@ import { CHART_COLORS } from '../../constants';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const daysAgoStr = (n) => { const d = new Date(); return localDateStr(new Date(d.getFullYear(), d.getMonth(), d.getDate() - n)); };
+
 const fmtD = (d, days) => {
   try { return days <= 1 ? format(new Date(d), 'HH:mm') : format(new Date(d), 'dd.MM'); }
   catch { return String(d); }
@@ -340,8 +343,8 @@ const MaterialPanel = ({ days = 30 }) => {
 
   useEffect(() => {
     setLoading(true);
-    const dateTo = new Date().toISOString().split('T')[0];
-    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
     matSvc.getMaterials({ limit: 1000, dateFrom, dateTo })
       .then((r) => {
         const data = r.data.data;
@@ -360,7 +363,6 @@ const MaterialPanel = ({ days = 30 }) => {
         {[
           { label: "Jami yozuvlar", value: items.length, unit: 'ta', color: 'primary' },
           { label: "Ishlatilgan miqdor", value: totalUsed.toLocaleString(), unit: 'kg', color: 'info' },
-          { label: "Jami miqdor", value: totalUsed.toLocaleString(), unit: 'kg', color: 'secondary' },
           { label: "Kategoriyalar", value: categories, unit: 'xil', color: 'warning' },
         ].map((s) => (
           <Grid item xs={6} sm={3} key={s.label}>
@@ -696,8 +698,8 @@ const KraskaPanel = ({ days }) => {
 
   useEffect(() => {
     setLoading(true);
-    const dateTo = new Date().toISOString().split('T')[0];
-    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
     paintSvc.getPaintRecords({ limit: 1000, dateFrom, dateTo })
       .then((r) => {
         setRecords(r.data.data || []);
@@ -766,8 +768,8 @@ const AtxotPanel = ({ days }) => {
 
   useEffect(() => {
     setLoading(true);
-    const dateTo = new Date().toISOString().split('T')[0];
-    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
     Promise.all([
       wasteSvc.getWasteRecords({ limit: 1000, dateFrom, dateTo }),
       dashSvc.getKPIs(),

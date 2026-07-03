@@ -12,7 +12,8 @@ import * as svc from '../../services/paint.service';
 import * as pSvc from '../../services/production.service';
 import { format } from 'date-fns';
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const todayStr = () => localDateStr(new Date());
 const EMPTY_ENTRY = { date: todayStr(), lineId: '', reja: '', fakt: '' };
 
 const Paint = () => {
