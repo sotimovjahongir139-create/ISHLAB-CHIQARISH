@@ -104,7 +104,6 @@ const DepartmentsTab = ({ factoryId }) => {
             <TableRow>
               <TableCell>Bo'lim</TableCell>
               <TableCell>Kodi</TableCell>
-              <TableCell>Zavod</TableCell>
               <TableCell align="center">Xodimlar</TableCell>
               <TableCell align="center">Foydalanuvchilar</TableCell>
               <TableCell>Holat</TableCell>
@@ -113,7 +112,7 @@ const DepartmentsTab = ({ factoryId }) => {
           </TableHead>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={28} /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4 }}><CircularProgress size={28} /></TableCell></TableRow>
             ) : departments.map((d) => (
               <TableRow key={d.id} hover>
                 <TableCell>
@@ -123,7 +122,6 @@ const DepartmentsTab = ({ factoryId }) => {
                   </Box>
                 </TableCell>
                 <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{d.code}</TableCell>
-                <TableCell>{d.factory?.name}</TableCell>
                 <TableCell align="center">
                   <Chip icon={<People fontSize="small" />} label={d._count?.employees || 0} size="small" />
                 </TableCell>

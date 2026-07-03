@@ -923,8 +923,8 @@ const ReportCard = ({ def, selected, onSelect }) => {
           <Box sx={{ mb: 1.5 }}>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>Bo'lim</Typography>
             <ToggleButtonGroup size="small" exclusive value={category} onChange={(_, v) => v && setCategory(v)} fullWidth>
-              <ToggleButton value="PU" sx={{ fontSize: 12, py: 0.4 }}>PU (Haqiqiy)</ToggleButton>
-              <ToggleButton value="TEP" sx={{ fontSize: 12, py: 0.4 }}>TEP (Reja)</ToggleButton>
+              <ToggleButton value="PU" sx={{ fontSize: 12, py: 0.4 }}>PU</ToggleButton>
+              <ToggleButton value="TEP" sx={{ fontSize: 12, py: 0.4 }}>TEP</ToggleButton>
             </ToggleButtonGroup>
           </Box>
         )}

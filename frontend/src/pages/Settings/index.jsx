@@ -464,39 +464,6 @@ const Settings = () => {
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2 }}>Umumiy sozlamalar</Typography>
-                <List disablePadding>
-                  <ListItem disablePadding sx={{ py: 1.5 }}>
-                    <ListItemText primary="Til" secondary="Interfeys tili" />
-                    <ListItemSecondaryAction>
-                      <Typography variant="body2" color="primary">O'zbek (Lotin)</Typography>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider />
-                  <ListItem disablePadding sx={{ py: 1.5 }}>
-                    <ListItemText primary="Vaqt mintaqasi" secondary="Joriy vaqt mintaqasi" />
-                    <ListItemSecondaryAction>
-                      <Typography variant="body2" color="primary">Asia/Tashkent</Typography>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider />
-                  <ListItem disablePadding sx={{ py: 1.5 }}>
-                    <ListItemText primary="Bildirishnomalar" secondary="Push bildirishnomalarni yoqish" />
-                    <ListItemSecondaryAction><Switch defaultChecked /></ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider />
-                  <ListItem disablePadding sx={{ py: 1.5 }}>
-                    <ListItemText primary="To'xtalish ogohlantirishi" secondary="Faol to'xtalishlar haqida ogohlantirish" />
-                    <ListItemSecondaryAction><Switch defaultChecked /></ListItemSecondaryAction>
-                  </ListItem>
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>KPI Maqsadlar</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <TextField label="OEE Maqsad (%)" defaultValue="85" type="number" size="small" fullWidth />
