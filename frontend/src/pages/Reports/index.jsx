@@ -334,32 +334,34 @@ const DowntimePanel = ({ days }) => {
 
 // ─── panel: MATERIAL ─────────────────────────────────────────────────────────
 
-const MaterialPanel = () => {
+const MaterialPanel = ({ days = 30 }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    matSvc.getMaterials({ limit: 100 })
+    setLoading(true);
+    const dateTo = new Date().toISOString().split('T')[0];
+    const dateFrom = new Date(Date.now() - (days - 1) * 86400000).toISOString().split('T')[0];
+    matSvc.getMaterials({ limit: 1000, dateFrom, dateTo })
       .then((r) => {
         const data = r.data.data;
-        const list = Array.isArray(data) ? data : (data?.items || []);
-        setItems(list);
+        setItems(Array.isArray(data) ? data : (data?.items || []));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [days]);
 
-  const lowStock = items.filter((m) => m.minQuantity && m.quantity <= m.minQuantity);
-  const totalValue = items.reduce((s, m) => s + (m.quantity || 0), 0);
+  const totalUsed = Math.round(items.reduce((s, m) => s + (parseFloat(m.currentStock) || 0), 0) * 100) / 100;
+  const categories = [...new Set(items.map((m) => m.category).filter(Boolean))].length;
 
   return (
     <Box>
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[
-          { label: "Jami materiallar", value: items.length, unit: 'ta', color: 'primary' },
-          { label: "Kam qolgan", value: lowStock.length, unit: 'ta', color: lowStock.length > 0 ? 'error' : 'success' },
-          { label: "Jami miqdor", value: totalValue.toLocaleString(), unit: '', color: 'info' },
-          { label: "Kategoriyalar", value: [...new Set(items.map((m) => m.category).filter(Boolean))].length, unit: 'xil', color: 'secondary' },
+          { label: "Jami yozuvlar", value: items.length, unit: 'ta', color: 'primary' },
+          { label: "Ishlatilgan miqdor", value: totalUsed.toLocaleString(), unit: 'kg', color: 'info' },
+          { label: "Jami miqdor", value: totalUsed.toLocaleString(), unit: 'kg', color: 'secondary' },
+          { label: "Kategoriyalar", value: categories, unit: 'xil', color: 'warning' },
         ].map((s) => (
           <Grid item xs={6} sm={3} key={s.label}>
             {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
@@ -368,50 +370,39 @@ const MaterialPanel = () => {
       </Grid>
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>Zaxira holati</Typography>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>Xomashyo sarfi qaydlari</Typography>
           {loading ? <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1 }} /> : (
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell>Sana</TableCell>
                     <TableCell>Nomi</TableCell>
                     <TableCell>Kategoriya</TableCell>
-                    <TableCell align="right">Miqdor</TableCell>
-                    <TableCell align="right">Min. miqdor</TableCell>
-                    <TableCell align="center">Holat</TableCell>
+                    <TableCell align="right">Fakt (kg)</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {items.length === 0 && (
-                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>Ma'lumot yo'q</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>Ma'lumot yo'q</TableCell></TableRow>
                   )}
-                  {[...items].sort((a, b) => {
-                    const aLow = a.minQuantity && a.quantity <= a.minQuantity;
-                    const bLow = b.minQuantity && b.quantity <= b.minQuantity;
-                    return bLow - aLow;
-                  }).slice(0, 20).map((m) => {
-                    const isLow = m.minQuantity && m.quantity <= m.minQuantity;
-                    return (
-                      <TableRow key={m.id} hover sx={isLow ? { bgcolor: 'error.50' } : {}}>
-                        <TableCell><Typography variant="body2" fontWeight={600}>{m.name}</Typography></TableCell>
+                  {[...items]
+                    .sort((a, b) => new Date(b.recordDate || b.createdAt) - new Date(a.recordDate || a.createdAt))
+                    .slice(0, 50)
+                    .map((m) => (
+                      <TableRow key={m.id} hover>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                          {format(new Date(m.recordDate || m.createdAt), 'dd.MM.yyyy')}
+                        </TableCell>
+                        <TableCell><Typography variant="body2" fontWeight={500}>{m.name}</Typography></TableCell>
                         <TableCell><Typography variant="caption">{m.category || '—'}</Typography></TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: isLow ? 'error.main' : 'inherit' }}>
-                          {m.quantity?.toLocaleString()} {m.unit}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: 'text.secondary', fontSize: 12 }}>
-                          {m.minQuantity ? `${m.minQuantity} ${m.unit}` : '—'}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={isLow ? 'Kam' : 'Normal'}
-                            color={isLow ? 'error' : 'success'}
-                            size="small"
-                            variant="outlined"
-                          />
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          {m.currentStock !== null && m.currentStock !== undefined
+                            ? parseFloat(m.currentStock).toLocaleString()
+                            : '—'}
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                    ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -848,7 +839,7 @@ const DashboardPanel = ({ reportKey, days }) => {
     case 'PRODUCTION': return <ProductionPanel days={days} />;
     case 'QUALITY':    return <QualityPanel days={days} />;
     case 'DOWNTIME':   return <DowntimePanel days={days} />;
-    case 'MATERIAL':   return <MaterialPanel />;
+    case 'MATERIAL':   return <MaterialPanel days={days} />;
     case 'EMPLOYEE':   return <EmployeePanel />;
     case 'EQUIPMENT':  return <EquipmentPanel />;
     case 'ATXOT':      return <AtxotPanel days={days} />;
