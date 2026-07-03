@@ -38,6 +38,15 @@ const getPeriodDates = (period) => {
     monday.setDate(today.getDate() - diff);
     return { dateFrom: monday.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
   }
+  if (period === 'otgan_oy') {
+    const now = new Date();
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    return {
+      dateFrom: prevMonthStart.toISOString().split('T')[0],
+      dateTo: prevMonthEnd.toISOString().split('T')[0],
+    };
+  }
   const first = new Date(today.getFullYear(), today.getMonth(), 1);
   return { dateFrom: first.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] };
 };
@@ -231,7 +240,7 @@ const Materials = () => {
 
       {/* Period buttons */}
       <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-        {[['kunlik', 'Kunlik'], ['haftalik', 'Haftalik'], ['oylik', 'Oylik']].map(([p, label]) => (
+        {[['kunlik', 'Kunlik'], ['haftalik', 'Haftalik'], ['oylik', 'Oylik'], ['otgan_oy', "O'tgan oy"]].map(([p, label]) => (
           <Button
             key={p} size="small"
             variant={period === p ? 'contained' : 'outlined'}

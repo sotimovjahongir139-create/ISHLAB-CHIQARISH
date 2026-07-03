@@ -19,7 +19,7 @@ import { PLAN_STATUS } from '../../constants';
 import { format } from 'date-fns';
 import usePermission from '../../hooks/usePermission';
 
-const EMPTY_PLAN = { planDate: '', plannedQty: '', productionLineId: '', productModelId: '', notes: '', planType: 'TEP' };
+const EMPTY_PLAN = { planDate: '', plannedQty: '', faktQty: '', productionLineId: '', productModelId: '', notes: '', planType: 'TEP' };
 const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
 const Production = () => {
@@ -150,9 +150,11 @@ const Production = () => {
   };
 
   const openEditPlan = (p) => {
+    const faktTotal = (p.productionFacts || []).reduce((s, f) => s + f.producedQty, 0);
     setPlanForm({
       planDate: format(new Date(p.planDate), 'yyyy-MM-dd'),
       plannedQty: p.plannedQty,
+      faktQty: faktTotal > 0 ? faktTotal : '',
       productionLineId: p.productionLineId,
       productModelId: p.productModelId,
       notes: p.notes || '',
@@ -169,6 +171,16 @@ const Production = () => {
         enqueueSnackbar('Reja yaratildi', { variant: 'success' });
       } else {
         await svc.updatePlan(planDialog.item.id, body);
+        if (planForm.faktQty && parseInt(planForm.faktQty) > 0) {
+          await svc.createFact({
+            factDate: planForm.planDate,
+            producedQty: parseInt(planForm.faktQty),
+            defectQty: 0,
+            productionLineId: planForm.productionLineId,
+            productModelId: planForm.productModelId || undefined,
+            planId: planDialog.item.id,
+          });
+        }
         enqueueSnackbar('Reja yangilandi', { variant: 'success' });
       }
       setPlanDialog({ open: false, mode: 'create', item: null });
@@ -391,7 +403,7 @@ const Production = () => {
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                           <Tooltip title="Tahrirlash">
-                            <IconButton size="small" onClick={() => openEditPlan(p)} disabled={['COMPLETED', 'CANCELLED'].includes(p.status)}>
+                            <IconButton size="small" onClick={() => openEditPlan(p)}>
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -460,7 +472,10 @@ const Production = () => {
               <UzDatePicker label="Sana *" required {...Pf('planDate')} />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="Reja miqdori (dona) *" type="number" size="small" fullWidth {...Pf('plannedQty')} />
+              <TextField label="Reja (dona) *" type="number" size="small" fullWidth {...Pf('plannedQty')} />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField label="Fakt (dona)" type="number" size="small" fullWidth {...Pf('faktQty')} inputProps={{ min: 0 }} />
             </Grid>
             <Grid item xs={6}>
               <FormControl fullWidth size="small">

@@ -42,23 +42,23 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
       sx={{
         width: SIDEBAR_WIDTH,
         flexShrink: 0,
-        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#1E2A3A', color: '#F8FAFC' },
+        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#FFFFFF', color: '#1E293B', borderRight: '1px solid #E2E8F0' },
       }}
     >
       {/* Logo */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box component="img" src="/logo.svg" alt="ARKON" sx={{ width: 38, height: 38 }} />
-        <Typography variant="body1" fontWeight={800} letterSpacing={2} sx={{ color: '#fff', fontSize: '1.1rem' }}>
+        <Typography variant="body1" fontWeight={800} letterSpacing={2} sx={{ color: '#1E293B', fontSize: '1.1rem' }}>
           ARKON
         </Typography>
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+      <Divider sx={{ borderColor: '#E2E8F0' }} />
 
       {/* Nav */}
       <List sx={{ px: 1, py: 1, flexGrow: 1 }}>
         {NAV.map((item, i) => {
-          if (item.divider) return <Divider key={i} sx={{ my: 1, borderColor: 'rgba(255,255,255,0.08)' }} />;
+          if (item.divider) return <Divider key={i} sx={{ my: 1, borderColor: '#E2E8F0' }} />;
           if (item.roles && !hasRole(...item.roles)) return null;
 
           const active = item.path === '/'
@@ -73,26 +73,26 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               sx={{
                 borderRadius: 1.5, mb: 0.5, py: 0.85,
                 pl: 1.5,
-                color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+                color: active ? '#fff' : '#475569',
                 bgcolor: active ? '#2563EB !important' : 'transparent',
                 borderLeft: '3px solid',
-                borderColor: active ? 'rgba(255,255,255,0.85)' : 'transparent',
+                borderColor: active ? '#2563EB' : 'transparent',
                 transition: 'all 0.15s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.1) !important',
-                  color: '#fff',
-                  borderColor: active ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)',
+                  bgcolor: active ? '#2563EB !important' : 'rgba(37,99,235,0.08) !important',
+                  color: active ? '#fff' : '#1E293B',
+                  borderColor: active ? '#2563EB' : 'transparent',
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 34, color: active ? '#fff' : 'rgba(255,255,255,0.55)' }}>{item.icon}</ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 34, color: active ? '#fff' : '#64748B' }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 500 : 400, letterSpacing: active ? 0.2 : 0 }} />
             </ListItemButton>
           );
         })}
       </List>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+      <Divider sx={{ borderColor: '#E2E8F0' }} />
 
       {/* User */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
