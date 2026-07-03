@@ -53,34 +53,34 @@ const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
   <Card sx={{
     height: '100%', borderLeft: `3px solid ${c.accent}`,
     transition: 'box-shadow 0.15s ease',
-    '&:hover': { boxShadow: 3 },
+    '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
   }}>
-    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+    <CardContent sx={{ p: '14px 16px', '&:last-child': { pb: '14px' } }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.75 }}>
         <Typography sx={{
-          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
-          fontSize: '0.65rem', color: 'text.secondary', lineHeight: 1.3, pr: 0.5,
+          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
+          fontSize: '10px', color: '#6B7280', lineHeight: 1.3, pr: 0.5,
         }}>
           {title}
         </Typography>
         <Box sx={{
-          width: 26, height: 26, borderRadius: 1.5, flexShrink: 0,
+          width: 28, height: 28, borderRadius: 1.5, flexShrink: 0,
           bgcolor: c.bg, border: `1px solid ${c.accent}28`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.accent,
         }}>
           {icon}
         </Box>
       </Box>
-      {loading ? <Skeleton width={66} height={26} /> : (
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.4 }}>
+      {loading ? <Skeleton width={66} height={28} /> : (
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
           <Typography sx={{
-            fontSize: '1.3rem', fontWeight: 700, color: '#0F172A',
+            fontSize: '24px', fontWeight: 600, color: '#111827',
             lineHeight: 1, fontVariantNumeric: 'tabular-nums',
           }}>
             {value !== null && value !== undefined ? Number(value).toLocaleString() : '0'}
           </Typography>
           {unit && (
-            <Typography sx={{ fontSize: '0.7rem' }} color="text.secondary">{unit}</Typography>
+            <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>{unit}</Typography>
           )}
         </Box>
       )}
@@ -235,7 +235,7 @@ const Dashboard = () => {
       </Box>
 
       {/* ── Kunlik ko'rsatkichlar ── */}
-      <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.07em', mb: 0.75 }}>
+      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
         Kunlik ko'rsatkichlar
       </Typography>
       <Grid container spacing={1} sx={{ mb: 1.25 }}>
@@ -262,7 +262,7 @@ const Dashboard = () => {
       </Grid>
 
       {/* ── Oylik ko'rsatkichlar ── */}
-      <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.07em', mb: 0.75 }}>
+      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
         Oylik ko'rsatkichlar
       </Typography>
       <Grid container spacing={1} sx={{ mb: 2 }}>
