@@ -1,6 +1,16 @@
 const prisma = require('../../config/database');
 const { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } = require('date-fns');
 
+const calcOee = ({ producedQty, plannedQty, goodQty, totalWorkMin, totalDowntimeMin }) => {
+  if (producedQty === 0 && plannedQty === 0) return 0;
+  const unumdorlik = plannedQty > 0 ? producedQty / plannedQty : 0;
+  const mavjudlik = totalWorkMin > 0
+    ? Math.max(0, (totalWorkMin - totalDowntimeMin) / totalWorkMin)
+    : 1;
+  const sifat = producedQty > 0 ? goodQty / producedQty : 1;
+  return Math.round(mavjudlik * unumdorlik * sifat * 10000) / 100;
+};
+
 const getKPIs = async (factoryId, date = new Date()) => {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
@@ -9,28 +19,37 @@ const getKPIs = async (factoryId, date = new Date()) => {
   const where = factoryId
     ? { productionLine: { factoryId } }
     : {};
+  const dtWhere = factoryId ? { productionLine: { factoryId } } : {};
 
   const [
     todayFacts, monthFacts, activeDowntimes, openDefects, employeeCount,
-    todayDowntimes, monthDowntimes,
+    todayDowntimeAgg, monthDowntimeAgg,
     todayXomashyo, monthXomashyo,
     todayKraska, monthKraska,
+    todayPlans, monthPlans,
+    todaySchedule, monthSchedule,
   ] = await Promise.all([
     prisma.productionFact.aggregate({
       where: { ...where, factDate: { gte: dayStart, lte: dayEnd } },
       _sum: { producedQty: true, defectQty: true, goodQty: true },
-      _avg: { efficiency: true, oee: true },
     }),
     prisma.productionFact.aggregate({
       where: { ...where, factDate: { gte: monthStart, lte: dayEnd } },
       _sum: { producedQty: true, goodQty: true },
-      _avg: { efficiency: true, oee: true },
     }),
-    prisma.downtime.count({ where: { status: 'ACTIVE', ...(factoryId ? { productionLine: { factoryId } } : {}) } }),
+    prisma.downtime.count({ where: { status: 'ACTIVE', ...dtWhere } }),
     prisma.defect.count({ where: { status: { in: ['OPEN', 'IN_REVIEW'] } } }),
     prisma.employee.count({ where: { isDeleted: false } }).catch(() => 0),
-    prisma.downtime.count({ where: { startTime: { gte: dayStart, lte: dayEnd } } }),
-    prisma.downtime.count({ where: { startTime: { gte: monthStart, lte: dayEnd } } }),
+    prisma.downtime.aggregate({
+      where: { startTime: { gte: dayStart, lte: dayEnd }, ...dtWhere },
+      _count: { id: true },
+      _sum: { durationMinutes: true },
+    }),
+    prisma.downtime.aggregate({
+      where: { startTime: { gte: monthStart, lte: dayEnd }, ...dtWhere },
+      _count: { id: true },
+      _sum: { durationMinutes: true },
+    }),
     prisma.material.aggregate({
       where: { isDeleted: false, recordDate: { gte: dayStart, lte: dayEnd } },
       _sum: { currentStock: true },
@@ -47,25 +66,66 @@ const getKPIs = async (factoryId, date = new Date()) => {
       where: { date: { gte: monthStart, lte: dayEnd } },
       _sum: { quantity: true },
     }).catch(() => ({ _sum: { quantity: 0 } })),
+    prisma.productionPlan.aggregate({
+      where: { isDeleted: false, planDate: { gte: dayStart, lte: dayEnd }, ...where },
+      _sum: { plannedQty: true },
+    }).catch(() => ({ _sum: { plannedQty: 0 } })),
+    prisma.productionPlan.aggregate({
+      where: { isDeleted: false, planDate: { gte: monthStart, lte: dayEnd }, ...where },
+      _sum: { plannedQty: true },
+    }).catch(() => ({ _sum: { plannedQty: 0 } })),
+    prisma.dailyWorkSchedule.aggregate({
+      where: { date: { gte: dayStart, lte: dayEnd } },
+      _sum: { totalHours: true },
+      _count: { id: true },
+    }).catch(() => ({ _sum: { totalHours: 0 }, _count: { id: 0 } })),
+    prisma.dailyWorkSchedule.aggregate({
+      where: { date: { gte: monthStart, lte: dayEnd } },
+      _sum: { totalHours: true },
+      _count: { id: true },
+    }).catch(() => ({ _sum: { totalHours: 0 }, _count: { id: 0 } })),
   ]);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const todayWorkMin = (todaySchedule._sum.totalHours || 0) * 60
+    + (1 - (todaySchedule._count.id || 0)) * 480;
+  const monthDayCount = Math.ceil((dayEnd - monthStart) / msPerDay);
+  const monthWorkMin = (monthSchedule._sum.totalHours || 0) * 60
+    + (monthDayCount - (monthSchedule._count.id || 0)) * 480;
+
+  const todayOee = calcOee({
+    producedQty: todayFacts._sum.producedQty || 0,
+    plannedQty: todayPlans._sum.plannedQty || 0,
+    goodQty: todayFacts._sum.goodQty || 0,
+    totalWorkMin: todayWorkMin,
+    totalDowntimeMin: todayDowntimeAgg._sum.durationMinutes || 0,
+  });
+
+  const monthOee = calcOee({
+    producedQty: monthFacts._sum.producedQty || 0,
+    plannedQty: monthPlans._sum.plannedQty || 0,
+    goodQty: monthFacts._sum.goodQty || 0,
+    totalWorkMin: monthWorkMin,
+    totalDowntimeMin: monthDowntimeAgg._sum.durationMinutes || 0,
+  });
 
   return {
     today: {
       produced: todayFacts._sum.producedQty || 0,
       defects: todayFacts._sum.defectQty || 0,
       good: todayFacts._sum.goodQty || 0,
-      efficiency: Math.round((todayFacts._avg.efficiency || 0) * 100) / 100,
-      oee: Math.round((todayFacts._avg.oee || 0) * 100) / 100,
-      downtimes: todayDowntimes,
+      efficiency: todayOee,
+      oee: todayOee,
+      downtimes: todayDowntimeAgg._count.id || 0,
       xomashyo: Math.round((todayXomashyo._sum.currentStock || 0) * 100) / 100,
       kraska: Math.round((todayKraska._sum.quantity || 0) * 100) / 100,
     },
     month: {
       produced: monthFacts._sum.producedQty || 0,
       good: monthFacts._sum.goodQty || 0,
-      efficiency: Math.round((monthFacts._avg.efficiency || 0) * 100) / 100,
-      oee: Math.round((monthFacts._avg.oee || 0) * 100) / 100,
-      downtimes: monthDowntimes,
+      efficiency: monthOee,
+      oee: monthOee,
+      downtimes: monthDowntimeAgg._count.id || 0,
       xomashyo: Math.round((monthXomashyo._sum.currentStock || 0) * 100) / 100,
       kraska: Math.round((monthKraska._sum.quantity || 0) * 100) / 100,
     },
@@ -157,7 +217,10 @@ const getDepartmentComparison = async (factoryId, days = 30, startDate = null, e
     to = endOfDay(new Date());
   }
 
-  const [plans, facts] = await Promise.all([
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const periodDayCount = Math.ceil((to - from) / msPerDay);
+
+  const [plans, facts, lineDowntimes, schedules] = await Promise.all([
     prisma.productionPlan.groupBy({
       by: ['productionLineId'],
       where: {
@@ -174,9 +237,24 @@ const getDepartmentComparison = async (factoryId, days = 30, startDate = null, e
         ...(factoryId ? { productionLine: { factoryId } } : {}),
       },
       _sum: { producedQty: true, goodQty: true, defectQty: true },
-      _avg: { efficiency: true },
     }),
+    prisma.downtime.groupBy({
+      by: ['productionLineId'],
+      where: {
+        startTime: { gte: from, lte: to },
+        ...(factoryId ? { productionLine: { factoryId } } : {}),
+      },
+      _sum: { durationMinutes: true },
+    }),
+    prisma.dailyWorkSchedule.aggregate({
+      where: { date: { gte: from, lte: to } },
+      _sum: { totalHours: true },
+      _count: { id: true },
+    }).catch(() => ({ _sum: { totalHours: 0 }, _count: { id: 0 } })),
   ]);
+
+  const totalWorkMin = (schedules._sum.totalHours || 0) * 60
+    + (periodDayCount - (schedules._count.id || 0)) * 480;
 
   const lines = await prisma.productionLine.findMany({
     where: { isDeleted: false, ...(factoryId ? { factoryId } : {}) },
@@ -186,17 +264,26 @@ const getDepartmentComparison = async (factoryId, days = 30, startDate = null, e
   return lines.map((line) => {
     const plan = plans.find((p) => p.productionLineId === line.id);
     const fact = facts.find((f) => f.productionLineId === line.id);
+    const dt = lineDowntimes.find((d) => d.productionLineId === line.id);
     const planned = plan?._sum.plannedQty || 0;
     const produced = fact?._sum.producedQty || 0;
+    const goodQty = fact?._sum.goodQty || 0;
+    const dtMin = dt?._sum.durationMinutes || 0;
+    const unumdorlik = planned > 0 ? produced / planned : 0;
+    const mavjudlik = totalWorkMin > 0 ? Math.max(0, (totalWorkMin - dtMin) / totalWorkMin) : 1;
+    const sifat = produced > 0 ? goodQty / produced : 1;
+    const efficiency = planned > 0 || produced > 0
+      ? Math.round(mavjudlik * unumdorlik * sifat * 10000) / 100
+      : 0;
     return {
       lineId: line.id,
       lineName: line.name,
       lineCode: line.code,
       planned,
       produced,
-      good: fact?._sum.goodQty || 0,
+      good: goodQty,
       defects: fact?._sum.defectQty || 0,
-      efficiency: planned > 0 ? Math.round(((fact?._sum.goodQty || 0) / planned) * 10000) / 100 : 0,
+      efficiency,
       fulfillment: planned > 0 ? Math.round((produced / planned) * 10000) / 100 : 0,
     };
   });
