@@ -6,7 +6,7 @@ import {
   Dashboard, Factory, VerifiedUser, AccessTime,
   Inventory, People, Build, Assessment,
   AdminPanelSettings, Settings, DeleteSweep, ColorLens,
-  ContentCut, PrecisionManufacturing,
+  ContentCut, PrecisionManufacturing, TrendingUp,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,7 @@ const NAV = [
   { label: 'Kesish', icon: <ContentCut />, path: '/kesish' },
   { label: 'Charxlash', icon: <PrecisionManufacturing />, path: '/charxlash' },
   { label: 'Xodimlar', icon: <People />, path: '/employees' },
+  { label: 'Xodimlar samaradorligi', icon: <TrendingUp />, path: '/emp-performance' },
   { label: 'Uskunalar', icon: <Build />, path: '/equipment' },
   { label: 'Hisobotlar', icon: <Assessment />, path: '/reports' },
   { divider: true },

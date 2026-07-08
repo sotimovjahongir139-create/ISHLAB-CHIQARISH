@@ -42,6 +42,12 @@ const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS charxlash_records (id TEXT NOT NULL, date DATE NOT NULL, planned_qty INTEGER, produced_qty INTEGER, brak_qty INTEGER DEFAULT 0, notes TEXT, is_deleted BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), production_line_id TEXT NOT NULL, employee_id TEXT, CONSTRAINT charxlash_records_pkey PRIMARY KEY (id))`,
   `CREATE INDEX IF NOT EXISTS charxlash_records_date_idx ON charxlash_records(date)`,
   `CREATE INDEX IF NOT EXISTS charxlash_records_line_idx ON charxlash_records(production_line_id)`,
+
+  // employee_daily_performance: per-employee daily output tracking
+  `CREATE TABLE IF NOT EXISTS employee_daily_performance (id TEXT NOT NULL, date DATE NOT NULL, planned_qty INTEGER, produced_qty INTEGER, brak_qty INTEGER NOT NULL DEFAULT 0, efficiency DOUBLE PRECISION, notes TEXT, is_deleted BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), employee_id TEXT NOT NULL, department_id TEXT NOT NULL, CONSTRAINT employee_daily_performance_pkey PRIMARY KEY (id))`,
+  `CREATE INDEX IF NOT EXISTS edp_date_idx ON employee_daily_performance(date)`,
+  `CREATE INDEX IF NOT EXISTS edp_employee_idx ON employee_daily_performance(employee_id)`,
+  `CREATE INDEX IF NOT EXISTS edp_department_idx ON employee_daily_performance(department_id)`,
 ];
 
 async function main() {

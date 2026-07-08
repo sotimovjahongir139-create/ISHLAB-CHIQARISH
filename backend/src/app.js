@@ -24,6 +24,7 @@ const paintRoutes = require('./routes/paint.routes');
 const workhourRoutes = require('./routes/workhour.routes');
 const kesishRoutes = require('./routes/kesish.routes');
 const charxlashRoutes = require('./routes/charxlash.routes');
+const empPerfRoutes = require('./routes/emp-performance.routes');
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use(`${API}/paint`, paintRoutes);
 app.use(`${API}/workhours`, workhourRoutes);
 app.use(`${API}/kesish`, kesishRoutes);
 app.use(`${API}/charxlash`, charxlashRoutes);
+app.use(`${API}/employee-performance`, empPerfRoutes);
 
 // 404
 app.use((req, res) => res.status(404).json({ success: false, message: 'Yo\'l topilmadi' }));

@@ -183,11 +183,12 @@ model Department {
 
   managerId String? @map("manager_id")
 
-  users        User[]
-  employees    Employee[]
-  workHours    EmployeeWorkHour[]
-  wasteRecords WasteRecord[]
-  paintRecords PaintRecord[]
+  users            User[]
+  employees        Employee[]
+  workHours        EmployeeWorkHour[]
+  wasteRecords     WasteRecord[]
+  paintRecords     PaintRecord[]
+  dailyPerformances EmployeeDailyPerformance[]
 
   @@map("departments")
   @@index([factoryId])
@@ -245,12 +246,13 @@ model Employee {
   departmentId String     @map("department_id")
   department   Department @relation(fields: [departmentId], references: [id])
 
-  attendance      EmployeeAttendance[]
-  performance     EmployeePerformance[]
-  workHours       EmployeeWorkHour[]
-  paintRecords    PaintRecord[]
-  kesishRecords   KesishRecord[]
-  charxlashRecords CharxlashRecord[]
+  attendance        EmployeeAttendance[]
+  performance       EmployeePerformance[]
+  workHours         EmployeeWorkHour[]
+  paintRecords      PaintRecord[]
+  kesishRecords     KesishRecord[]
+  charxlashRecords  CharxlashRecord[]
+  dailyPerformances EmployeeDailyPerformance[]
 
   @@map("employees")
   @@index([departmentId])
@@ -1072,4 +1074,28 @@ model CharxlashRecord {
   @@map("charxlash_records")
   @@index([date])
   @@index([productionLineId])
+}
+
+model EmployeeDailyPerformance {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  plannedQty  Int?     @map("planned_qty")
+  producedQty Int?     @map("produced_qty")
+  brakQty     Int      @default(0) @map("brak_qty")
+  efficiency  Float?
+  notes       String?
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@map("employee_daily_performance")
+  @@index([date])
+  @@index([employeeId])
+  @@index([departmentId])
 }

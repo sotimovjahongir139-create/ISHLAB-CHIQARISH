@@ -10,7 +10,7 @@ import {
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
   Close, Visibility, Assessment, DeleteSweep, ColorLens,
-  ContentCut, PrecisionManufacturing,
+  ContentCut, PrecisionManufacturing, TrendingUp,
 } from '@mui/icons-material';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -26,6 +26,7 @@ import * as wasteSvc from '../../services/waste.service';
 import * as paintSvc from '../../services/paint.service';
 import * as kesishSvc from '../../services/kesish.service';
 import * as charxlashSvc from '../../services/charxlash.service';
+import * as empPerfSvc from '../../services/emp-performance.service';
 import { CHART_COLORS } from '../../constants';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -983,21 +984,163 @@ const CharxlashPanel = ({ days }) => {
   );
 };
 
+// ─── panel: EMP PERFORMANCE ──────────────────────────────────────────────────
+
+const effColor = (eff) => {
+  if (eff == null) return '#6B7280';
+  if (eff >= 90) return '#16A34A';
+  if (eff >= 70) return '#EA580C';
+  return '#DC2626';
+};
+
+const EmpPerfPanel = ({ days }) => {
+  const [stats, setStats] = useState(null);
+  const [records, setRecords] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
+    Promise.all([
+      empPerfSvc.getEmpPerfStats({ startDate: dateFrom, endDate: dateTo }),
+      empPerfSvc.getEmpPerfRecords({ limit: 1000, startDate: dateFrom, endDate: dateTo }),
+    ])
+      .then(([statsR, recsR]) => {
+        setStats(statsR.data.data);
+        setRecords(recsR.data.data || []);
+        setTotal(recsR.data.pagination?.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  return (
+    <Box>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: `Jami yozuvlar (${days} kun)`, value: total, unit: 'ta', color: 'primary' },
+          { label: 'Jami fakt', value: (stats?.totalFakt || 0).toLocaleString(), unit: 'dona', color: 'success' },
+          { label: 'Jami brak', value: (stats?.totalBrak || 0).toLocaleString(), unit: 'dona', color: 'error' },
+          { label: "O'rtacha samaradorlik", value: stats?.avgEfficiency ?? 0, unit: '%', color: 'info' },
+        ].map((s) => (
+          <Grid item xs={6} sm={3} key={s.label}>
+            {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
+          </Grid>
+        ))}
+      </Grid>
+
+      {stats?.topPerformers?.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+              Top-5 samarali xodimlar
+            </Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>#</TableCell>
+                    <TableCell>Xodim</TableCell>
+                    <TableCell align="right">Fakt (dona)</TableCell>
+                    <TableCell align="right">Reja (dona)</TableCell>
+                    <TableCell align="right">Samaradorlik</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {stats.topPerformers.map((p, i) => (
+                    <TableRow key={p.employeeId} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700} color={i === 0 ? 'warning.main' : 'text.secondary'}>
+                          {i + 1}
+                        </Typography>
+                      </TableCell>
+                      <TableCell><Typography variant="body2" fontWeight={500}>{p.name}</Typography></TableCell>
+                      <TableCell align="right">{p.producedQty.toLocaleString()}</TableCell>
+                      <TableCell align="right">{p.plannedQty.toLocaleString()}</TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={700} sx={{ color: effColor(p.efficiency) }}>
+                          {p.efficiency}%
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      <ChartCard title="Xodimlar ko'rsatkichlari" loading={loading}>
+        {records.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+            <TrendingUp sx={{ fontSize: 40, mb: 1, color: '#BBF7D0' }} />
+            <Typography>Ma'lumot topilmadi</Typography>
+          </Box>
+        ) : (
+          <TableContainer sx={{ maxHeight: 280 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Sana</TableCell>
+                  <TableCell>Xodim</TableCell>
+                  <TableCell>Bo'lim</TableCell>
+                  <TableCell align="right">Reja</TableCell>
+                  <TableCell align="right">Fakt</TableCell>
+                  <TableCell align="right">Samaradorlik</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {records.slice(0, 50).map((r) => {
+                  const eff = r.plannedQty > 0 && r.producedQty != null
+                    ? Math.round((r.producedQty / r.plannedQty) * 10000) / 100
+                    : null;
+                  return (
+                    <TableRow key={r.id} hover>
+                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>
+                        {r.date ? new Date(r.date).toLocaleDateString('uz-UZ') : '—'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 12 }}>
+                        {r.employee ? `${r.employee.firstName} ${r.employee.lastName}` : '—'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 12 }}>{r.department?.name || '—'}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12 }}>{r.plannedQty ?? '—'}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12 }}>{r.producedQty ?? 0}</TableCell>
+                      <TableCell align="right">
+                        {eff != null
+                          ? <Typography variant="caption" fontWeight={700} sx={{ color: effColor(eff) }}>{eff}%</Typography>
+                          : <Typography variant="caption" color="text.secondary">—</Typography>}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </ChartCard>
+    </Box>
+  );
+};
+
 // ─── panel dispatcher ────────────────────────────────────────────────────────
 
 const DashboardPanel = ({ reportKey, days }) => {
   switch (reportKey) {
-    case 'PRODUCTION': return <ProductionPanel days={days} />;
-    case 'QUALITY':    return <QualityPanel days={days} />;
-    case 'DOWNTIME':   return <DowntimePanel days={days} />;
-    case 'MATERIAL':   return <MaterialPanel days={days} />;
-    case 'EMPLOYEE':   return <EmployeePanel />;
-    case 'EQUIPMENT':  return <EquipmentPanel />;
-    case 'ATXOT':      return <AtxotPanel days={days} />;
-    case 'KRASKA':     return <KraskaPanel days={days} />;
-    case 'KESISH':     return <KesishPanel days={days} />;
-    case 'CHARXLASH':  return <CharxlashPanel days={days} />;
-    default:           return <PeriodPanel reportKey={reportKey} days={days} />;
+    case 'PRODUCTION':   return <ProductionPanel days={days} />;
+    case 'QUALITY':      return <QualityPanel days={days} />;
+    case 'DOWNTIME':     return <DowntimePanel days={days} />;
+    case 'MATERIAL':     return <MaterialPanel days={days} />;
+    case 'EMPLOYEE':     return <EmployeePanel />;
+    case 'EQUIPMENT':    return <EquipmentPanel />;
+    case 'ATXOT':        return <AtxotPanel days={days} />;
+    case 'KRASKA':       return <KraskaPanel days={days} />;
+    case 'KESISH':       return <KesishPanel days={days} />;
+    case 'CHARXLASH':    return <CharxlashPanel days={days} />;
+    case 'EMP_PERF':     return <EmpPerfPanel days={days} />;
+    default:             return <PeriodPanel reportKey={reportKey} days={days} />;
   }
 };
 
@@ -1025,6 +1168,7 @@ const REPORT_DEFS = [
   { key: 'KRASKA', label: 'Kraska', icon: <ColorLens />, color: 'secondary', hasPuTep: false },
   { key: 'KESISH', label: 'Kesish', icon: <ContentCut />, color: 'warning', hasPuTep: false },
   { key: 'CHARXLASH', label: 'Charxlash', icon: <PrecisionManufacturing />, color: 'info', hasPuTep: false },
+  { key: 'EMP_PERF', label: 'Xodimlar samaradorligi', icon: <TrendingUp />, color: 'success', hasPuTep: false },
   { key: 'DAILY', label: 'Kunlik hisobot', icon: <DateRange />, color: 'primary', hasPuTep: true },
   { key: 'WEEKLY', label: 'Haftalik hisobot', icon: <DateRange />, color: 'secondary', hasPuTep: true },
   { key: 'MONTHLY', label: 'Oylik hisobot', icon: <DateRange />, color: 'info', hasPuTep: true },
