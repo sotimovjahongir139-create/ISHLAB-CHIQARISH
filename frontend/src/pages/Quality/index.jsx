@@ -8,12 +8,13 @@
 } from '@mui/material';
 import { Add, Refresh, Edit, VerifiedUser, Warning } from '@mui/icons-material';
 import UzDatePicker from '../../components/UzDatePicker';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSnackbar } from 'notistack';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, Legend, PieChart, Pie, Cell,
 } from 'recharts';
+import BrakDinamikasi from './BrakDinamikasi';
 import * as svc from '../../services/quality.service';
 import * as pSvc from '../../services/production.service';
 import { DEFECT_STATUS, DEFECT_SEVERITY, CHART_COLORS } from '../../constants';
@@ -164,6 +165,8 @@ const Quality = () => {
           )}
         </Box>
       </Box>
+
+      <BrakDinamikasi />
 
       {/* Filters */}
       <Card sx={{ mb: 2 }}>
