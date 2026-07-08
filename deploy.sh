@@ -23,6 +23,12 @@ git pull origin master
 echo "      Commit: $(git log -1 --oneline)"
 echo ""
 
+# ── Auto-inject Sifat integration vars if missing from .env ──────────────────
+grep -q "SIFAT_USERNAME" .env || echo "SIFAT_USERNAME=admin" >> .env
+grep -q "SIFAT_PASSWORD" .env || echo "SIFAT_PASSWORD=arkon07_sifat" >> .env
+grep -q "SIFAT_API_URL"  .env || echo "SIFAT_API_URL=https://sifat.arkon-group.uz" >> .env
+grep -q "SIFAT_API_KEY"  .env || echo "SIFAT_API_KEY=7ec140d34708f8df370a4654d2b441b327a3efdadf751d52ae93b2d5182424f4" >> .env
+
 # ── Step 2: Rebuild backend image (no cache) ─────────────────────────────────
 echo "[2/5] Rebuilding backend Docker image (no-cache)..."
 docker compose build --no-cache "$BACKEND_SERVICE"

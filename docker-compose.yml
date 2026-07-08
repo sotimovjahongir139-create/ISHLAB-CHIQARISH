@@ -57,6 +57,10 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
       RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      SIFAT_API_URL: ${SIFAT_API_URL:-https://sifat.arkon-group.uz}
+      SIFAT_API_KEY: ${SIFAT_API_KEY}
+      SIFAT_USERNAME: ${SIFAT_USERNAME}
+      SIFAT_PASSWORD: ${SIFAT_PASSWORD}
     ports:
       - "5000:5000"
     healthcheck:
