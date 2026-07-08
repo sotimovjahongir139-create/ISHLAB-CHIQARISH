@@ -189,6 +189,23 @@ const createFact = async (body) => {
     });
   }
 
+  try {
+    fetch(`${process.env.SIFAT_API_URL}/api/fakt/receive`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.SIFAT_API_KEY,
+      },
+      body: JSON.stringify({
+        date: body.factDate,
+        sku: fact.productModel?.name ?? '',
+        qty: fact.producedQty,
+      }),
+    }).catch((err) => console.error('[Sifat Integration] Error:', err));
+  } catch (err) {
+    console.error('[Sifat Integration] Failed to send:', err);
+  }
+
   return fact;
 };
 
