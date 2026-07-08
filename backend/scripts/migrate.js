@@ -32,6 +32,16 @@ const MIGRATIONS = [
   // materials: make warehouse_id nullable + add record_date for daily log entries
   `ALTER TABLE materials ALTER COLUMN warehouse_id DROP NOT NULL`,
   `ALTER TABLE materials ADD COLUMN IF NOT EXISTS record_date DATE`,
+
+  // kesish_records: cutting department log
+  `CREATE TABLE IF NOT EXISTS kesish_records (id TEXT NOT NULL, date DATE NOT NULL, planned_qty INTEGER, produced_qty INTEGER, brak_qty INTEGER DEFAULT 0, notes TEXT, is_deleted BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), production_line_id TEXT NOT NULL, employee_id TEXT, CONSTRAINT kesish_records_pkey PRIMARY KEY (id))`,
+  `CREATE INDEX IF NOT EXISTS kesish_records_date_idx ON kesish_records(date)`,
+  `CREATE INDEX IF NOT EXISTS kesish_records_line_idx ON kesish_records(production_line_id)`,
+
+  // charxlash_records: grinding/sharpening department log
+  `CREATE TABLE IF NOT EXISTS charxlash_records (id TEXT NOT NULL, date DATE NOT NULL, planned_qty INTEGER, produced_qty INTEGER, brak_qty INTEGER DEFAULT 0, notes TEXT, is_deleted BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), production_line_id TEXT NOT NULL, employee_id TEXT, CONSTRAINT charxlash_records_pkey PRIMARY KEY (id))`,
+  `CREATE INDEX IF NOT EXISTS charxlash_records_date_idx ON charxlash_records(date)`,
+  `CREATE INDEX IF NOT EXISTS charxlash_records_line_idx ON charxlash_records(production_line_id)`,
 ];
 
 async function main() {

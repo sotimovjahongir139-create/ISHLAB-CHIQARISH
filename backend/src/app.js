@@ -22,6 +22,8 @@ const adminRoutes = require('./routes/admin.routes');
 const wasteRoutes = require('./routes/waste.routes');
 const paintRoutes = require('./routes/paint.routes');
 const workhourRoutes = require('./routes/workhour.routes');
+const kesishRoutes = require('./routes/kesish.routes');
+const charxlashRoutes = require('./routes/charxlash.routes');
 
 const app = express();
 
@@ -60,6 +62,8 @@ app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}/waste`, wasteRoutes);
 app.use(`${API}/paint`, paintRoutes);
 app.use(`${API}/workhours`, workhourRoutes);
+app.use(`${API}/kesish`, kesishRoutes);
+app.use(`${API}/charxlash`, charxlashRoutes);
 
 // 404
 app.use((req, res) => res.status(404).json({ success: false, message: 'Yo\'l topilmadi' }));

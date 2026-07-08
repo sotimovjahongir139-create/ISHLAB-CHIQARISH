@@ -245,10 +245,12 @@ model Employee {
   departmentId String     @map("department_id")
   department   Department @relation(fields: [departmentId], references: [id])
 
-  attendance   EmployeeAttendance[]
-  performance  EmployeePerformance[]
-  workHours    EmployeeWorkHour[]
-  paintRecords PaintRecord[]
+  attendance      EmployeeAttendance[]
+  performance     EmployeePerformance[]
+  workHours       EmployeeWorkHour[]
+  paintRecords    PaintRecord[]
+  kesishRecords   KesishRecord[]
+  charxlashRecords CharxlashRecord[]
 
   @@map("employees")
   @@index([departmentId])
@@ -340,11 +342,13 @@ model ProductionLine {
   factoryId String  @map("factory_id")
   factory   Factory @relation(fields: [factoryId], references: [id])
 
-  productionPlans ProductionPlan[]
-  productionFacts ProductionFact[]
-  equipment       Equipment[]
-  downtimes       Downtime[]
-  paintRecords    PaintRecord[]
+  productionPlans  ProductionPlan[]
+  productionFacts  ProductionFact[]
+  equipment        Equipment[]
+  downtimes        Downtime[]
+  paintRecords     PaintRecord[]
+  kesishRecords    KesishRecord[]
+  charxlashRecords CharxlashRecord[]
 
   @@map("production_lines")
   @@index([factoryId])
@@ -1024,4 +1028,48 @@ model PaintRecord {
   @@index([departmentId])
   @@index([lineId])
   @@index([date])
+}
+
+model KesishRecord {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  plannedQty  Int?     @map("planned_qty")
+  producedQty Int?     @map("produced_qty")
+  brakQty     Int      @default(0) @map("brak_qty")
+  notes       String?
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  productionLineId String         @map("production_line_id")
+  productionLine   ProductionLine @relation(fields: [productionLineId], references: [id])
+
+  employeeId String?   @map("employee_id")
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  @@map("kesish_records")
+  @@index([date])
+  @@index([productionLineId])
+}
+
+model CharxlashRecord {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  plannedQty  Int?     @map("planned_qty")
+  producedQty Int?     @map("produced_qty")
+  brakQty     Int      @default(0) @map("brak_qty")
+  notes       String?
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  productionLineId String         @map("production_line_id")
+  productionLine   ProductionLine @relation(fields: [productionLineId], references: [id])
+
+  employeeId String?   @map("employee_id")
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  @@map("charxlash_records")
+  @@index([date])
+  @@index([productionLineId])
 }

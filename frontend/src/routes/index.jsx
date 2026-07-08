@@ -44,6 +44,8 @@ const Settings      = safeImport(() => import('../pages/Settings'));
 const Administration = safeImport(() => import('../pages/Administration'));
 const Waste         = safeImport(() => import('../pages/Waste'));
 const Paint         = safeImport(() => import('../pages/Paint'));
+const Kesish        = safeImport(() => import('../pages/Kesish'));
+const Charxlash     = safeImport(() => import('../pages/Charxlash'));
 
 const Loading = () => (
   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -85,6 +87,8 @@ export const router = createBrowserRouter([
       { path: 'administration', element: <Guarded element={<Administration />}  roles={['super_admin', 'admin']} /> },
       { path: 'waste',          element: <Guarded element={<Waste />}           permission="materials:read" /> },
       { path: 'paint',          element: <Guarded element={<Paint />}           permission="materials:read" /> },
+      { path: 'kesish',         element: <Guarded element={<Kesish />}          permission="materials:read" /> },
+      { path: 'charxlash',      element: <Guarded element={<Charxlash />}       permission="materials:read" /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

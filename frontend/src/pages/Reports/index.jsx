@@ -10,6 +10,7 @@ import {
   Factory, VerifiedUser, AccessTime,
   Inventory, People, Build,
   Close, Visibility, Assessment, DeleteSweep, ColorLens,
+  ContentCut, PrecisionManufacturing,
 } from '@mui/icons-material';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -23,6 +24,8 @@ import * as empSvc from '../../services/employee.service';
 import * as eqSvc from '../../services/equipment.service';
 import * as wasteSvc from '../../services/waste.service';
 import * as paintSvc from '../../services/paint.service';
+import * as kesishSvc from '../../services/kesish.service';
+import * as charxlashSvc from '../../services/charxlash.service';
 import { CHART_COLORS } from '../../constants';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -834,6 +837,152 @@ const AtxotPanel = ({ days }) => {
   );
 };
 
+// ─── panel: KESISH ───────────────────────────────────────────────────────────
+
+const KesishPanel = ({ days }) => {
+  const [records, setRecords] = useState([]);
+  const [totalFakt, setTotalFakt] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
+    kesishSvc.getKesishRecords({ limit: 1000, startDate: dateFrom, endDate: dateTo })
+      .then((r) => {
+        setRecords(r.data.data || []);
+        setTotalFakt(r.data.totalFakt || 0);
+        setTotal(r.data.pagination?.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  const byLine = records.reduce((acc, r) => {
+    const key = r.productionLine?.name || 'Boshqa';
+    acc[key] = { fakt: (acc[key]?.fakt || 0) + (r.producedQty || 0), brak: (acc[key]?.brak || 0) + (r.brakQty || 0) };
+    return acc;
+  }, {});
+  const chartData = Object.entries(byLine)
+    .map(([name, v]) => ({ name, fakt: v.fakt, brak: v.brak }))
+    .sort((a, b) => b.fakt - a.fakt);
+  const totalBrak = records.reduce((s, r) => s + (r.brakQty || 0), 0);
+
+  return (
+    <Box>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: `Jami fakt (${days} kun)`, value: totalFakt.toLocaleString(), unit: 'dona', color: 'warning' },
+          { label: 'Jami brak', value: totalBrak.toLocaleString(), unit: 'dona', color: 'error' },
+          { label: 'Yozuvlar soni', value: total, unit: 'ta', color: 'primary' },
+        ].map((s) => (
+          <Grid item xs={6} sm={4} key={s.label}>
+            {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
+          </Grid>
+        ))}
+      </Grid>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <ChartCard title="Liniyalar bo'yicha kesish (dona)" loading={loading}>
+            {chartData.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                <ContentCut sx={{ fontSize: 40, mb: 1, color: '#FDBA74' }} />
+                <Typography>Ma'lumot topilmadi</Typography>
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 44)}>
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} unit=" dona" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+                  <Tooltip formatter={(v, name) => [`${v} dona`, name === 'fakt' ? 'Fakt' : 'Brak']} />
+                  <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{v === 'fakt' ? 'Fakt' : 'Brak'}</span>} />
+                  <Bar dataKey="fakt" name="fakt" fill="#EA580C" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="brak" name="brak" fill="#DC2626" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+// ─── panel: CHARXLASH ────────────────────────────────────────────────────────
+
+const CharxlashPanel = ({ days }) => {
+  const [records, setRecords] = useState([]);
+  const [totalFakt, setTotalFakt] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const dateTo = localDateStr(new Date());
+    const dateFrom = daysAgoStr(days - 1);
+    charxlashSvc.getCharxlashRecords({ limit: 1000, startDate: dateFrom, endDate: dateTo })
+      .then((r) => {
+        setRecords(r.data.data || []);
+        setTotalFakt(r.data.totalFakt || 0);
+        setTotal(r.data.pagination?.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  const byLine = records.reduce((acc, r) => {
+    const key = r.productionLine?.name || 'Boshqa';
+    acc[key] = { fakt: (acc[key]?.fakt || 0) + (r.producedQty || 0), brak: (acc[key]?.brak || 0) + (r.brakQty || 0) };
+    return acc;
+  }, {});
+  const chartData = Object.entries(byLine)
+    .map(([name, v]) => ({ name, fakt: v.fakt, brak: v.brak }))
+    .sort((a, b) => b.fakt - a.fakt);
+  const totalBrak = records.reduce((s, r) => s + (r.brakQty || 0), 0);
+
+  return (
+    <Box>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: `Jami fakt (${days} kun)`, value: totalFakt.toLocaleString(), unit: 'dona', color: 'info' },
+          { label: 'Jami brak', value: totalBrak.toLocaleString(), unit: 'dona', color: 'error' },
+          { label: 'Yozuvlar soni', value: total, unit: 'ta', color: 'primary' },
+        ].map((s) => (
+          <Grid item xs={6} sm={4} key={s.label}>
+            {loading ? <Skeleton variant="rectangular" height={70} sx={{ borderRadius: 2 }} /> : <StatBox {...s} />}
+          </Grid>
+        ))}
+      </Grid>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <ChartCard title="Liniyalar bo'yicha charxlash (dona)" loading={loading}>
+            {chartData.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                <PrecisionManufacturing sx={{ fontSize: 40, mb: 1, color: '#A5F3FC' }} />
+                <Typography>Ma'lumot topilmadi</Typography>
+              </Box>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 44)}>
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} unit=" dona" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={140} />
+                  <Tooltip formatter={(v, name) => [`${v} dona`, name === 'fakt' ? 'Fakt' : 'Brak']} />
+                  <Legend formatter={(v) => <span style={{ fontSize: 11 }}>{v === 'fakt' ? 'Fakt' : 'Brak'}</span>} />
+                  <Bar dataKey="fakt" name="fakt" fill="#0891B2" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="brak" name="brak" fill="#DC2626" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
 // ─── panel dispatcher ────────────────────────────────────────────────────────
 
 const DashboardPanel = ({ reportKey, days }) => {
@@ -846,6 +995,8 @@ const DashboardPanel = ({ reportKey, days }) => {
     case 'EQUIPMENT':  return <EquipmentPanel />;
     case 'ATXOT':      return <AtxotPanel days={days} />;
     case 'KRASKA':     return <KraskaPanel days={days} />;
+    case 'KESISH':     return <KesishPanel days={days} />;
+    case 'CHARXLASH':  return <CharxlashPanel days={days} />;
     default:           return <PeriodPanel reportKey={reportKey} days={days} />;
   }
 };
@@ -872,6 +1023,8 @@ const REPORT_DEFS = [
   { key: 'EQUIPMENT', label: 'Uskunalar', icon: <Build />, color: 'info', hasPuTep: false },
   { key: 'ATXOT', label: 'Atxot', icon: <DeleteSweep />, color: 'error', hasPuTep: false },
   { key: 'KRASKA', label: 'Kraska', icon: <ColorLens />, color: 'secondary', hasPuTep: false },
+  { key: 'KESISH', label: 'Kesish', icon: <ContentCut />, color: 'warning', hasPuTep: false },
+  { key: 'CHARXLASH', label: 'Charxlash', icon: <PrecisionManufacturing />, color: 'info', hasPuTep: false },
   { key: 'DAILY', label: 'Kunlik hisobot', icon: <DateRange />, color: 'primary', hasPuTep: true },
   { key: 'WEEKLY', label: 'Haftalik hisobot', icon: <DateRange />, color: 'secondary', hasPuTep: true },
   { key: 'MONTHLY', label: 'Oylik hisobot', icon: <DateRange />, color: 'info', hasPuTep: true },

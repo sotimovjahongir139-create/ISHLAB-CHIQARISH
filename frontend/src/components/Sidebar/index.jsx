@@ -6,6 +6,7 @@ import {
   Dashboard, Factory, VerifiedUser, AccessTime,
   Inventory, People, Build, Assessment,
   AdminPanelSettings, Settings, DeleteSweep, ColorLens,
+  ContentCut, PrecisionManufacturing,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +20,8 @@ const NAV = [
   { label: 'Xomashyo', icon: <Inventory />, path: '/materials' },
   { label: 'Atxot', icon: <DeleteSweep />, path: '/waste' },
   { label: 'Kraska', icon: <ColorLens />, path: '/paint' },
+  { label: 'Kesish', icon: <ContentCut />, path: '/kesish' },
+  { label: 'Charxlash', icon: <PrecisionManufacturing />, path: '/charxlash' },
   { label: 'Xodimlar', icon: <People />, path: '/employees' },
   { label: 'Uskunalar', icon: <Build />, path: '/equipment' },
   { label: 'Hisobotlar', icon: <Assessment />, path: '/reports' },
