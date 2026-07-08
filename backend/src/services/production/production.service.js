@@ -24,11 +24,6 @@ const INCLUDE_FULL = {
   shift: { select: { id: true, name: true, code: true } },
 };
 
-const INCLUDE_PLANS = {
-  ...INCLUDE_FULL,
-  productionFacts: { select: { producedQty: true } },
-};
-
 // --- Production Plans ---
 const getPlans = async (query) => {
   const { page, limit, skip } = getPagination(query);
@@ -46,7 +41,7 @@ const getPlans = async (query) => {
     [data, total] = await Promise.all([
       prisma.productionPlan.findMany({
         where,
-        include: INCLUDE_PLANS,
+        include: INCLUDE_FULL,
         orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
         skip,
         take: limit,
@@ -59,7 +54,7 @@ const getPlans = async (query) => {
       [data, total] = await Promise.all([
         prisma.productionPlan.findMany({
           where,
-          include: INCLUDE_PLANS,
+          include: INCLUDE_FULL,
           orderBy: getSort(query, ['planDate', 'createdAt', 'status']),
           skip,
           take: limit,
@@ -69,6 +64,29 @@ const getPlans = async (query) => {
     } else {
       throw err;
     }
+  }
+
+  // Attach facts by date+line+model (facts may have null plan_id)
+  if (data.length > 0) {
+    const planDates = [...new Set(data.map((p) => p.planDate))];
+    const factsAgg = await prisma.productionFact.groupBy({
+      by: ['factDate', 'productionLineId', 'productModelId'],
+      where: { factDate: { in: planDates } },
+      _sum: { producedQty: true },
+    });
+
+    const fkey = (date, lineId, modelId) =>
+      `${date instanceof Date ? date.toISOString().slice(0, 10) : String(date).slice(0, 10)}|${lineId ?? ''}|${modelId ?? ''}`;
+
+    const factMap = {};
+    for (const f of factsAgg) {
+      factMap[fkey(f.factDate, f.productionLineId, f.productModelId)] = f._sum.producedQty ?? 0;
+    }
+
+    data = data.map((plan) => ({
+      ...plan,
+      productionFacts: [{ producedQty: factMap[fkey(plan.planDate, plan.productionLineId, plan.productModelId)] ?? 0 }],
+    }));
   }
 
   return { data, total, page, limit };
