@@ -2,18 +2,33 @@ const prisma = require('../../config/database');
 
 const SIFAT_BASE = process.env.SIFAT_API_URL || 'https://sifat.arkon-group.uz';
 
+// Extract 3-5 digit numeric identifier from a SKU string
+// "Padosh - 9092 - qora" → "9092"
+// "9092 padosh" → "9092"
+const extractNum = (str) => {
+  const m = String(str || '').match(/\b(\d{3,5})\b/);
+  return m ? m[1] : null;
+};
+
 async function getSifatToken() {
-  const res = await fetch(`${SIFAT_BASE}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      username: process.env.SIFAT_USERNAME,
-      password: process.env.SIFAT_PASSWORD,
-    }),
-  });
-  const data = await res.json();
-  if (!data.token) throw new Error('Login failed - no token');
-  return data.token;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${SIFAT_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: process.env.SIFAT_USERNAME,
+          password: process.env.SIFAT_PASSWORD,
+        }),
+      });
+      const data = await res.json();
+      if (data.token) return data.token;
+    } catch (err) {
+      if (attempt === 1) throw err;
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  throw new Error('Login failed - no token after retry');
 }
 
 async function getBrakDinamikasi(startDate, endDate) {
@@ -30,7 +45,6 @@ async function getBrakDinamikasi(startDate, endDate) {
     ? raw
     : (raw.data || raw.results || raw.items || raw.defects || []);
 
-  // Log first item so server logs show the actual field names
   if (defects.length > 0) {
     console.log('[Sifat] raw defect sample:', JSON.stringify(defects[0]));
   }
@@ -57,7 +71,7 @@ async function getBrakDinamikasi(startDate, endDate) {
     bySkuDate[sku][date] = (bySkuDate[sku][date] || 0) + brak;
   }
 
-  // Fakt from our DB grouped by factDate + productModel.name
+  // Fakt from our DB — match by numeric identifier in model name
   const facts = await prisma.productionFact.findMany({
     where: {
       factDate: { gte: new Date(startDate), lte: new Date(endDate) },
@@ -69,36 +83,43 @@ async function getBrakDinamikasi(startDate, endDate) {
     },
   });
 
-  const faktMap = {};
+  // factsByNum: { '9092': { '2026-07-07': 150, '2026-07-08': 200 } }
+  const factsByNum = {};
   for (const f of facts) {
     const date = f.factDate instanceof Date
       ? f.factDate.toISOString().slice(0, 10)
       : String(f.factDate).slice(0, 10);
-    const sku = f.productModel?.name;
-    if (!sku) continue;
-    const key = `${sku}|${date}`;
-    faktMap[key] = (faktMap[key] || 0) + (f.producedQty || 0);
+    const num = extractNum(f.productModel?.name);
+    if (!num) continue;
+    const key = `${num}|${date}`;
+    factsByNum[key] = (factsByNum[key] || 0) + (f.producedQty || 0);
   }
 
-  let totalBrak = 0;
-  let totalFakt = 0;
-  let foizSum = 0;
-  let foizCount = 0;
-
-  const datasets = Object.entries(bySkuDate).map(([sku, dateMap]) => {
+  // Build datasets, matching fakt by numeric SKU identifier
+  const rawDatasets = Object.entries(bySkuDate).map(([sku, dateMap]) => {
+    const skuNum = extractNum(sku);
     const data = Object.entries(dateMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, brak]) => {
-        const fakt = faktMap[`${sku}|${date}`] || 0;
+        const fakt = skuNum ? (factsByNum[`${skuNum}|${date}`] || 0) : 0;
         const foiz = fakt > 0 ? Math.round((brak / fakt) * 10000) / 100 : 0;
-        totalBrak += brak;
-        totalFakt += fakt;
-        if (fakt > 0) { foizSum += foiz; foizCount++; }
         return { date, brak, fakt, foiz };
       });
     return { sku, data };
   });
 
+  // Only include SKUs that have at least one brak > 0
+  const datasets = rawDatasets.filter((ds) => ds.data.some((d) => d.brak > 0));
+
+  // Accumulate summary from filtered datasets
+  let totalBrak = 0, totalFakt = 0, foizSum = 0, foizCount = 0;
+  for (const ds of datasets) {
+    for (const d of ds.data) {
+      totalBrak += d.brak;
+      totalFakt += d.fakt;
+      if (d.fakt > 0) { foizSum += d.foiz; foizCount++; }
+    }
+  }
   const avgFoiz = foizCount > 0 ? Math.round((foizSum / foizCount) * 100) / 100 : 0;
 
   return {

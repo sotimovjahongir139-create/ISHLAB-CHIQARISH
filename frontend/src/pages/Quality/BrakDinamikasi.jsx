@@ -1,7 +1,7 @@
 import {
   Box, Card, CardContent, Typography, Button, ButtonGroup,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  CircularProgress, Alert, Chip,
+  CircularProgress, Alert, Chip, Tabs, Tab,
 } from '@mui/material';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -34,8 +34,14 @@ const foizColor = (foiz) => {
   return '#DC2626';
 };
 
+const CATEGORIES = [
+  { key: 'padosh', label: 'Padosh' },
+  { key: 'stilka', label: 'Stilka' },
+];
+
 const BrakDinamikasi = () => {
   const [period, setPeriod] = useState('haftalik');
+  const [catTab, setCatTab] = useState(0);
   const [brakData, setBrakData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,30 +71,40 @@ const BrakDinamikasi = () => {
     return () => clearInterval(id);
   }, [loadData]);
 
+  // Filter datasets by selected category tab
+  const filteredDatasets = useMemo(() => {
+    if (!brakData?.datasets) return [];
+    const catKey = CATEGORIES[catTab].key;
+    return brakData.datasets.filter((ds) =>
+      ds.sku.toLowerCase().includes(catKey)
+    );
+  }, [brakData, catTab]);
+
   const chartData = useMemo(() => {
-    if (!brakData?.datasets?.length) return [];
+    if (!filteredDatasets.length) return [];
     const allDates = [
-      ...new Set(brakData.datasets.flatMap((ds) => ds.data.map((d) => d.date))),
+      ...new Set(filteredDatasets.flatMap((ds) => ds.data.map((d) => d.date))),
     ].sort();
     return allDates.map((date) => {
       const row = { date };
-      for (const ds of brakData.datasets) {
+      for (const ds of filteredDatasets) {
         const pt = ds.data.find((d) => d.date === date);
         row[ds.sku] = pt?.brak ?? 0;
       }
       return row;
     });
-  }, [brakData]);
+  }, [filteredDatasets]);
 
+  // Table rows: only brak > 0, sorted date desc
   const tableRows = useMemo(() => {
-    if (!brakData?.datasets) return [];
-    return brakData.datasets
+    return filteredDatasets
       .flatMap((ds) => ds.data.map((d) => ({ sku: ds.sku, ...d })))
+      .filter((r) => r.brak > 0)
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [brakData]);
+  }, [filteredDatasets]);
 
-  const skus = brakData?.datasets?.map((ds) => ds.sku) || [];
-  const { totalBrak, totalFakt, avgFoiz } = brakData?.summary || {};
+  const skus = filteredDatasets.map((ds) => ds.sku);
+  const { totalBrak, totalFakt } = brakData?.summary || {};
 
   const CustomTooltip = useCallback(
     ({ active, payload, label }) => {
@@ -97,38 +113,38 @@ const BrakDinamikasi = () => {
         <Box sx={{ bgcolor: 'background.paper', p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, fontSize: 12 }}>
           <Typography variant="caption" fontWeight={700} display="block" mb={0.5}>{label}</Typography>
           {payload.map((p) => {
-            const ds = brakData?.datasets?.find((d) => d.sku === p.name);
+            const ds = filteredDatasets.find((d) => d.sku === p.name);
             const pt = ds?.data.find((d) => d.date === label);
             return (
               <Box key={p.name} mb={0.3}>
                 <Box component="span" sx={{ color: p.color, fontWeight: 700 }}>{p.name}</Box>
                 {' · '}Brak: <b>{p.value}</b>
-                {pt ? <>{' · '}Fakt: <b>{pt.fakt}</b>{' · '}Foiz: <b>{pt.foiz}%</b></> : null}
+                {pt ? (
+                  <>
+                    {' · '}Fakt: <b>{pt.fakt || '—'}</b>
+                    {' · '}Foiz: <b>{pt.fakt > 0 ? `${pt.foiz}%` : '—'}</b>
+                  </>
+                ) : null}
               </Box>
             );
           })}
         </Box>
       );
     },
-    [brakData]
+    [filteredDatasets]
   );
 
   return (
     <Card sx={{ mb: 2.5 }}>
       <CardContent>
+        {/* Header row */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Typography variant="subtitle1" fontWeight={700}>Brak dinamikasi</Typography>
           <ButtonGroup size="small">
-            <Button
-              variant={period === 'haftalik' ? 'contained' : 'outlined'}
-              onClick={() => setPeriod('haftalik')}
-            >
+            <Button variant={period === 'haftalik' ? 'contained' : 'outlined'} onClick={() => setPeriod('haftalik')}>
               Haftalik
             </Button>
-            <Button
-              variant={period === 'oylik' ? 'contained' : 'outlined'}
-              onClick={() => setPeriod('oylik')}
-            >
+            <Button variant={period === 'oylik' ? 'contained' : 'outlined'} onClick={() => setPeriod('oylik')}>
               Oylik
             </Button>
           </ButtonGroup>
@@ -145,16 +161,22 @@ const BrakDinamikasi = () => {
 
         {!loading && !error && brakData && (
           <>
+            {/* Summary badges */}
             <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
               <Chip label={`Jami brak: ${totalBrak ?? 0} dona`} color="error" variant="outlined" />
               <Chip label={`Jami fakt: ${totalFakt ?? 0} dona`} color="primary" variant="outlined" />
-              <Chip
-                label={`O'rtacha foiz: ${avgFoiz ?? 0}%`}
-                variant="outlined"
-                sx={{ borderColor: foizColor(avgFoiz ?? 0), color: foizColor(avgFoiz ?? 0) }}
-              />
             </Box>
 
+            {/* Category tabs */}
+            <Tabs
+              value={catTab}
+              onChange={(_, v) => setCatTab(v)}
+              sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+            >
+              {CATEGORIES.map((c) => <Tab key={c.key} label={c.label} />)}
+            </Tabs>
+
+            {/* Line chart */}
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
@@ -177,9 +199,12 @@ const BrakDinamikasi = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <Typography color="text.secondary" sx={{ py: 2 }}>Ma'lumot topilmadi</Typography>
+              <Typography color="text.secondary" sx={{ py: 2 }}>
+                {CATEGORIES[catTab].label} bo'yicha ma'lumot topilmadi
+              </Typography>
             )}
 
+            {/* Table — only rows with brak > 0 */}
             {tableRows.length > 0 && (
               <TableContainer sx={{ mt: 2, maxHeight: 260 }}>
                 <Table size="small" stickyHeader>
@@ -197,12 +222,13 @@ const BrakDinamikasi = () => {
                       <TableRow key={i} hover>
                         <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{row.date}</TableCell>
                         <TableCell sx={{ fontSize: 12 }}>{row.sku}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12 }}>{row.fakt}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: 12 }}>{row.fakt > 0 ? row.fakt : '—'}</TableCell>
                         <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600, color: 'error.main' }}>{row.brak}</TableCell>
                         <TableCell align="right">
-                          <Typography variant="caption" fontWeight={700} sx={{ color: foizColor(row.foiz) }}>
-                            {row.foiz}%
-                          </Typography>
+                          {row.fakt > 0
+                            ? <Typography variant="caption" fontWeight={700} sx={{ color: foizColor(row.foiz) }}>{row.foiz}%</Typography>
+                            : <Typography variant="caption" color="text.secondary">—</Typography>
+                          }
                         </TableCell>
                       </TableRow>
                     ))}
