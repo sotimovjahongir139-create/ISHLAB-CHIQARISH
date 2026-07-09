@@ -17,12 +17,13 @@ const getPeriodDates = (period) => {
     const day = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-    return { startDate: fmt(monday), endDate: fmt(today) };
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { startDate: fmt(monday), endDate: fmt(sunday) };
   }
-  return {
-    startDate: fmt(new Date(today.getFullYear(), today.getMonth(), 1)),
-    endDate: fmt(today),
-  };
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return { startDate: fmt(firstDay), endDate: fmt(lastDay) };
 };
 
 const foizColor = (foiz) => {
@@ -64,7 +65,7 @@ const BrakDinamikasi = () => {
 
   useEffect(() => {
     loadData();
-    const id = setInterval(loadData, 60 * 1000);
+    const id = setInterval(loadData, 2 * 60 * 1000);
     return () => clearInterval(id);
   }, [loadData]);
 

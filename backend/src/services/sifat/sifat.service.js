@@ -4,14 +4,28 @@ const SIFAT_BASE = process.env.SIFAT_API_URL || 'https://sifat.arkon-group.uz';
 
 // Extract 3-5 digit numeric identifier from a SKU string
 // "Padosh - 9092 - qora" → "9092"
-// "9092 padosh" → "9092"
 const extractNum = (str) => {
   const m = String(str || '').match(/\b(\d{3,5})\b/);
   return m ? m[1] : null;
 };
 
+// Local-timezone-safe date string — avoids toISOString() UTC shift
+const pad = (n) => String(n).padStart(2, '0');
+const dateToStr = (d) => {
+  if (!(d instanceof Date)) return String(d).slice(0, 10);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+// Module-level token cache — avoids re-login on every request
+let cachedToken = null;
+
 async function getSifatToken() {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  if (cachedToken) return cachedToken;
+
+  const delays = [0, 1000, 2000, 4000];
+  let lastErr;
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
     try {
       const res = await fetch(`${SIFAT_BASE}/api/auth/login`, {
         method: 'POST',
@@ -22,21 +36,33 @@ async function getSifatToken() {
         }),
       });
       const data = await res.json();
-      if (data.token) return data.token;
+      if (data.token) {
+        cachedToken = data.token;
+        return data.token;
+      }
+      lastErr = new Error('Login failed - no token in response');
     } catch (err) {
-      if (attempt === 1) throw err;
+      lastErr = err;
     }
-    await new Promise((r) => setTimeout(r, 1500));
   }
-  throw new Error('Login failed - no token after retry');
+  throw lastErr || new Error('Login failed after retries');
+}
+
+// Authenticated fetch — clears cached token and retries once on 401
+async function sifatFetch(url) {
+  const token = await getSifatToken();
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) {
+    cachedToken = null;
+    const freshToken = await getSifatToken();
+    return fetch(url, { headers: { Authorization: `Bearer ${freshToken}` } });
+  }
+  return res;
 }
 
 async function getBrakDinamikasi(startDate, endDate) {
-  const token = await getSifatToken();
-
-  const res = await fetch(
-    `${SIFAT_BASE}/api/defects?date_from=${startDate}&date_to=${endDate}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+  const res = await sifatFetch(
+    `${SIFAT_BASE}/api/defects?date_from=${startDate}&date_to=${endDate}`
   );
   if (!res.ok) throw new Error(`Defects fetch failed: ${res.status}`);
   const raw = await res.json();
@@ -49,14 +75,14 @@ async function getBrakDinamikasi(startDate, endDate) {
     console.log('[Sifat] raw defect sample:', JSON.stringify(defects[0]));
   }
 
-  // Group brak by sku + date — try every plausible field name
+  // Group brak by sku + date
+  // Normalize date to YYYY-MM-DD regardless of what Sifat returns (datetime, etc.)
   const bySkuDate = {};
   for (const d of defects) {
-    const date =
+    const rawDate =
       d.date || d.fact_date || d.defect_date || d.report_date ||
-      d.inspection_date || d.day || d.sana ||
-      (d.created_at ? String(d.created_at).slice(0, 10) : null) ||
-      (d.createdAt ? String(d.createdAt).slice(0, 10) : null);
+      d.inspection_date || d.day || d.sana || d.created_at || d.createdAt;
+    const date = rawDate ? String(rawDate).slice(0, 10) : null;
     const sku =
       d.sku || d.model || d.product_model || d.product_name ||
       d.model_name || d.modelName || d.product || d.item ||
@@ -83,16 +109,19 @@ async function getBrakDinamikasi(startDate, endDate) {
     },
   });
 
-  // factsByNum: { '9092': { '2026-07-07': 150, '2026-07-08': 200 } }
+  // Build factsByNum: { '3317|2026-07-06': 105 }
+  // Use local-timezone date string to avoid UTC-shift mismatches
   const factsByNum = {};
   for (const f of facts) {
-    const date = f.factDate instanceof Date
-      ? f.factDate.toISOString().slice(0, 10)
-      : String(f.factDate).slice(0, 10);
+    const date = dateToStr(f.factDate);
     const num = extractNum(f.productModel?.name);
     if (!num) continue;
     const key = `${num}|${date}`;
     factsByNum[key] = (factsByNum[key] || 0) + (f.producedQty || 0);
+  }
+
+  if (Object.keys(factsByNum).length > 0) {
+    console.log('[Sifat] factsByNum sample:', Object.keys(factsByNum).slice(0, 3));
   }
 
   // Build datasets, matching fakt by numeric SKU identifier
@@ -108,7 +137,7 @@ async function getBrakDinamikasi(startDate, endDate) {
     return { sku, data };
   });
 
-  // Only include SKUs that have at least one brak > 0
+  // Only keep SKUs that have at least one brak > 0
   const datasets = rawDatasets.filter((ds) => ds.data.some((d) => d.brak > 0));
 
   // Accumulate summary from filtered datasets
@@ -130,10 +159,7 @@ async function getBrakDinamikasi(startDate, endDate) {
 }
 
 async function getWeeklySummary() {
-  const token = await getSifatToken();
-  const res = await fetch(`${SIFAT_BASE}/api/defects/weekly-summary`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await sifatFetch(`${SIFAT_BASE}/api/defects/weekly-summary`);
   if (!res.ok) throw new Error(`Weekly summary fetch failed: ${res.status}`);
   return res.json();
 }
