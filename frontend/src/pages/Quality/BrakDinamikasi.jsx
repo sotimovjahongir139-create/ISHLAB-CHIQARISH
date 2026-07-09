@@ -3,8 +3,8 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   CircularProgress, Tabs, Tab,
 } from '@mui/material';
-import { Refresh } from '@mui/icons-material';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Refresh, WarningAmber } from '@mui/icons-material';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as sifatSvc from '../../services/sifat.service';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -42,30 +42,53 @@ const BrakDinamikasi = () => {
   const [catTab, setCatTab] = useState(0);
   const [brakData, setBrakData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+  const [stale, setStale] = useState(false);
   const [error, setError] = useState('');
+  // Ref tracks whether we've ever had good data — safe to read in stale closures
+  const hasData = useRef(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const loadData = useCallback(async (isManual = false) => {
+    if (isManual) setRetrying(true);
+    setStale(false);
     const { startDate, endDate } = getPeriodDates(period);
     try {
       const r = await sifatSvc.getBrakDinamikasi({ startDate, endDate });
       if (r.data?.error) {
-        setError(r.data.error);
-        setBrakData(null);
+        if (hasData.current) {
+          // Keep showing old data, show small stale warning
+          setStale(true);
+        } else {
+          setError(r.data.error);
+        }
       } else {
-        setBrakData(r.data?.data || null);
+        const data = r.data?.data || null;
+        setBrakData(data);
+        hasData.current = true;
+        setError('');
       }
     } catch {
-      setError("Sifat tizimi hozir mavjud emas");
+      if (hasData.current) {
+        setStale(true);
+      } else {
+        setError('Sifat tizimi hozir mavjud emas');
+      }
     } finally {
       setLoading(false);
+      if (isManual) setRetrying(false);
     }
   }, [period]);
 
   useEffect(() => {
+    // Reset fully on period change
+    setLoading(true);
+    setBrakData(null);
+    setError('');
+    setStale(false);
+    hasData.current = false;
     loadData();
-    const id = setInterval(loadData, 2 * 60 * 1000);
+    // Silent auto-retry every 2 minutes — no UI flicker
+    const id = setInterval(() => loadData(false), 2 * 60 * 1000);
     return () => clearInterval(id);
   }, [loadData]);
 
@@ -82,10 +105,12 @@ const BrakDinamikasi = () => {
   return (
     <Card sx={{ mb: 2.5 }}>
       <CardContent sx={{ pb: '12px !important' }}>
-        {/* Header: tabs LEFT, period buttons RIGHT */}
+        {/* Header: category tabs LEFT, period buttons RIGHT */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mr: 1 }}>Brak dinamikasi</Typography>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mr: 1 }}>
+              Brak dinamikasi
+            </Typography>
             <Tabs
               value={catTab}
               onChange={(_, v) => setCatTab(v)}
@@ -95,15 +120,22 @@ const BrakDinamikasi = () => {
             </Tabs>
           </Box>
           <ButtonGroup size="small">
-            <Button variant={period === 'haftalik' ? 'contained' : 'outlined'} onClick={() => setPeriod('haftalik')}>
+            <Button
+              variant={period === 'haftalik' ? 'contained' : 'outlined'}
+              onClick={() => setPeriod('haftalik')}
+            >
               Haftalik
             </Button>
-            <Button variant={period === 'oylik' ? 'contained' : 'outlined'} onClick={() => setPeriod('oylik')}>
+            <Button
+              variant={period === 'oylik' ? 'contained' : 'outlined'}
+              onClick={() => setPeriod('oylik')}
+            >
               Oylik
             </Button>
           </ButtonGroup>
         </Box>
 
+        {/* Initial load spinner — only when no data yet */}
         {loading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 3 }}>
             <CircularProgress size={20} />
@@ -111,14 +143,42 @@ const BrakDinamikasi = () => {
           </Box>
         )}
 
-        {!loading && error && (
+        {/* Full error — shown only when no data at all */}
+        {!loading && error && !brakData && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 2 }}>
             <Typography variant="body2" color="text.secondary">{error}</Typography>
-            <Button size="small" startIcon={<Refresh />} onClick={loadData}>Qayta urinish</Button>
+            <Button
+              size="small"
+              startIcon={retrying ? <CircularProgress size={14} /> : <Refresh />}
+              onClick={() => loadData(true)}
+              disabled={retrying}
+            >
+              Qayta urinish
+            </Button>
           </Box>
         )}
 
-        {!loading && !error && (
+        {/* Stale warning — fetch failed but old data still shown below */}
+        {!loading && stale && brakData && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+            <WarningAmber sx={{ fontSize: 14, color: 'warning.main' }} />
+            <Typography variant="caption" color="text.secondary">
+              Ma'lumotlar eskirgan bo'lishi mumkin
+            </Typography>
+            <Button
+              size="small"
+              sx={{ ml: 0.5, minWidth: 0, fontSize: 11 }}
+              startIcon={retrying ? <CircularProgress size={12} /> : <Refresh />}
+              onClick={() => loadData(true)}
+              disabled={retrying}
+            >
+              Yangilash
+            </Button>
+          </Box>
+        )}
+
+        {/* Table — visible whenever we have data (fresh or stale) */}
+        {!loading && brakData && (
           <TableContainer sx={{ maxHeight: 320 }}>
             <Table size="small" stickyHeader>
               <TableHead>
@@ -133,22 +193,39 @@ const BrakDinamikasi = () => {
               <TableBody>
                 {tableRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontSize: 13 }}>
+                    <TableCell
+                      colSpan={5}
+                      align="center"
+                      sx={{ py: 3, color: 'text.secondary', fontSize: 13 }}
+                    >
                       {CATEGORIES[catTab].label} bo'yicha brak ma'lumoti topilmadi
                     </TableCell>
                   </TableRow>
                 ) : (
                   tableRows.map((row, i) => (
                     <TableRow key={i} hover>
-                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDisplay(row.date)}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>
+                        {fmtDisplay(row.date)}
+                      </TableCell>
                       <TableCell sx={{ fontSize: 12 }}>{row.sku}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: 12 }}>{row.fakt > 0 ? row.fakt : '—'}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: 12, fontWeight: 700, color: 'error.main' }}>{row.brak}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12 }}>
+                        {row.fakt > 0 ? row.fakt : '—'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12, fontWeight: 700, color: 'error.main' }}>
+                        {row.brak}
+                      </TableCell>
                       <TableCell align="right">
-                        {row.fakt > 0
-                          ? <Typography variant="caption" fontWeight={700} sx={{ color: foizColor(row.foiz) }}>{row.foiz}%</Typography>
-                          : <Typography variant="caption" color="text.secondary">—</Typography>
-                        }
+                        {row.fakt > 0 ? (
+                          <Typography
+                            variant="caption"
+                            fontWeight={700}
+                            sx={{ color: foizColor(row.foiz) }}
+                          >
+                            {row.foiz}%
+                          </Typography>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">—</Typography>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

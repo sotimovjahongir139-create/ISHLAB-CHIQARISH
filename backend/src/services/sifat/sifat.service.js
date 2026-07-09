@@ -2,10 +2,15 @@ const prisma = require('../../config/database');
 
 const SIFAT_BASE = process.env.SIFAT_API_URL || 'https://sifat.arkon-group.uz';
 
-// Extract 3-5 digit numeric identifier from a SKU string
-// "Padosh - 9092 - qora" → "9092"
-const extractNum = (str) => {
-  const m = String(str || '').match(/\b(\d{3,5})\b/);
+// Extract numeric part from Sifat SKU
+// Primary: split by " - " and find the pure-numeric segment
+// "Padosh - 9092 - qora" → split → ["Padosh", "9092", "qora"] → "9092"
+// Fallback: first 3-5 digit sequence via regex
+const extractSkuNum = (sku) => {
+  const parts = String(sku || '').split(' - ');
+  const numPart = parts.find((p) => /^\d+$/.test(p.trim()));
+  if (numPart) return numPart.trim();
+  const m = String(sku || '').match(/\b(\d{3,5})\b/);
   return m ? m[1] : null;
 };
 
@@ -16,12 +21,11 @@ const dateToStr = (d) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-// Module-level token cache — avoids re-login on every request
+// Module-level token cache
 let cachedToken = null;
 
 async function getSifatToken() {
   if (cachedToken) return cachedToken;
-
   const delays = [0, 1000, 2000, 4000];
   let lastErr;
   for (let i = 0; i < delays.length; i++) {
@@ -48,16 +52,27 @@ async function getSifatToken() {
   throw lastErr || new Error('Login failed after retries');
 }
 
-// Authenticated fetch — clears cached token and retries once on 401
+// Authenticated fetch with:
+//   - 401 handling: clear token + re-auth + retry once
+//   - Network retry: 3 attempts, 2s between each
 async function sifatFetch(url) {
   const token = await getSifatToken();
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) {
-    cachedToken = null;
-    const freshToken = await getSifatToken();
-    return fetch(url, { headers: { Authorization: `Bearer ${freshToken}` } });
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        cachedToken = null;
+        const freshToken = await getSifatToken();
+        return fetch(url, { headers: { Authorization: `Bearer ${freshToken}` } });
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  return res;
+  throw lastErr;
 }
 
 async function getBrakDinamikasi(startDate, endDate) {
@@ -76,7 +91,7 @@ async function getBrakDinamikasi(startDate, endDate) {
   }
 
   // Group brak by sku + date
-  // Normalize date to YYYY-MM-DD regardless of what Sifat returns (datetime, etc.)
+  // Normalize date to YYYY-MM-DD regardless of Sifat format (datetime, etc.)
   const bySkuDate = {};
   for (const d of defects) {
     const rawDate =
@@ -97,7 +112,7 @@ async function getBrakDinamikasi(startDate, endDate) {
     bySkuDate[sku][date] = (bySkuDate[sku][date] || 0) + brak;
   }
 
-  // Fakt from our DB — match by numeric identifier in model name
+  // Fetch all facts in date range
   const facts = await prisma.productionFact.findMany({
     where: {
       factDate: { gte: new Date(startDate), lte: new Date(endDate) },
@@ -109,29 +124,43 @@ async function getBrakDinamikasi(startDate, endDate) {
     },
   });
 
-  // Build factsByNum: { '3317|2026-07-06': 105 }
-  // Use local-timezone date string to avoid UTC-shift mismatches
-  const factsByNum = {};
+  // Build factsByDate: { '2026-07-06': [{ modelName: '9092 padosh', qty: 150 }, ...] }
+  // Uses local-timezone dateToStr to avoid UTC-shift mismatches
+  const factsByDate = {};
   for (const f of facts) {
     const date = dateToStr(f.factDate);
-    const num = extractNum(f.productModel?.name);
-    if (!num) continue;
-    const key = `${num}|${date}`;
-    factsByNum[key] = (factsByNum[key] || 0) + (f.producedQty || 0);
+    if (!factsByDate[date]) factsByDate[date] = [];
+    factsByDate[date].push({
+      modelName: f.productModel?.name || '',
+      qty: f.producedQty || 0,
+    });
   }
 
-  if (Object.keys(factsByNum).length > 0) {
-    console.log('[Sifat] factsByNum sample:', Object.keys(factsByNum).slice(0, 3));
-  }
+  // Lookup: sum produced_qty where modelName includes the extracted number
+  // Equivalent to: SELECT SUM(produced_qty) WHERE model.name LIKE '%9092%' AND date = X
+  const lookupFakt = (num, date) => {
+    if (!num || !factsByDate[date]) return 0;
+    return factsByDate[date]
+      .filter((f) => f.modelName.includes(num))
+      .reduce((sum, f) => sum + f.qty, 0);
+  };
 
-  // Build datasets, matching fakt by numeric SKU identifier
+  // Build datasets with per-row fakt lookup and debug log
   const rawDatasets = Object.entries(bySkuDate).map(([sku, dateMap]) => {
-    const skuNum = extractNum(sku);
+    const num = extractSkuNum(sku);
     const data = Object.entries(dateMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, brak]) => {
-        const fakt = skuNum ? (factsByNum[`${skuNum}|${date}`] || 0) : 0;
+        const fakt = lookupFakt(num, date);
         const foiz = fakt > 0 ? Math.round((brak / fakt) * 10000) / 100 : 0;
+        console.log('[FAKT]', {
+          sku,
+          date,
+          extracted: num,
+          faktFound: fakt,
+          brak,
+          foiz: fakt > 0 ? `${foiz}%` : '—',
+        });
         return { date, brak, fakt, foiz };
       });
     return { sku, data };
@@ -140,7 +169,6 @@ async function getBrakDinamikasi(startDate, endDate) {
   // Only keep SKUs that have at least one brak > 0
   const datasets = rawDatasets.filter((ds) => ds.data.some((d) => d.brak > 0));
 
-  // Accumulate summary from filtered datasets
   let totalBrak = 0, totalFakt = 0, foizSum = 0, foizCount = 0;
   for (const ds of datasets) {
     for (const d of ds.data) {
