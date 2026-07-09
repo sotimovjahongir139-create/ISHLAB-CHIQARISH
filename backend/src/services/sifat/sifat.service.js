@@ -26,14 +26,32 @@ async function getBrakDinamikasi(startDate, endDate) {
   if (!res.ok) throw new Error(`Defects fetch failed: ${res.status}`);
   const raw = await res.json();
 
-  const defects = Array.isArray(raw) ? raw : (raw.data || raw.results || []);
+  const defects = Array.isArray(raw)
+    ? raw
+    : (raw.data || raw.results || raw.items || raw.defects || []);
 
-  // Group brak by sku + date
+  // Log first item so server logs show the actual field names
+  if (defects.length > 0) {
+    console.log('[Sifat] raw defect sample:', JSON.stringify(defects[0]));
+  }
+
+  // Group brak by sku + date — try every plausible field name
   const bySkuDate = {};
   for (const d of defects) {
-    const date = d.date || d.fact_date || (d.created_at ? d.created_at.slice(0, 10) : null);
-    const sku = d.sku || d.model || d.product_model;
-    const brak = Number(d.brak_qty ?? d.quantity ?? d.defect_qty ?? 0);
+    const date =
+      d.date || d.fact_date || d.defect_date || d.report_date ||
+      d.inspection_date || d.day || d.sana ||
+      (d.created_at ? String(d.created_at).slice(0, 10) : null) ||
+      (d.createdAt ? String(d.createdAt).slice(0, 10) : null);
+    const sku =
+      d.sku || d.model || d.product_model || d.product_name ||
+      d.model_name || d.modelName || d.product || d.item ||
+      d.name || d.artikul || d.nomi;
+    const brak = Number(
+      d.brak_qty ?? d.brak ?? d.quantity ?? d.qty ??
+      d.defect_qty ?? d.defect_count ?? d.count ?? d.amount ??
+      d.miqdor ?? 0
+    );
     if (!sku || !date) continue;
     if (!bySkuDate[sku]) bySkuDate[sku] = {};
     bySkuDate[sku][date] = (bySkuDate[sku][date] || 0) + brak;
@@ -83,7 +101,11 @@ async function getBrakDinamikasi(startDate, endDate) {
 
   const avgFoiz = foizCount > 0 ? Math.round((foizSum / foizCount) * 100) / 100 : 0;
 
-  return { datasets, summary: { totalBrak, totalFakt, avgFoiz } };
+  return {
+    datasets,
+    summary: { totalBrak, totalFakt, avgFoiz },
+    _rawSample: defects.slice(0, 2),
+  };
 }
 
 async function getWeeklySummary() {

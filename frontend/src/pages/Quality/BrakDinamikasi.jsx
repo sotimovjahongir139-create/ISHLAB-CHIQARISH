@@ -160,7 +160,7 @@ const BrakDinamikasi = () => {
                 <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} domain={[0, 'auto']} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   {skus.map((sku, i) => (
