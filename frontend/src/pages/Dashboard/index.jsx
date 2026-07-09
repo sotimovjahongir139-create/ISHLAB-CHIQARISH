@@ -252,11 +252,11 @@ const Dashboard = () => {
             icon={<AccessTime fontSize="small" />} c={C.orange} loading={loading} />
         </Grid>
         <Grid item xs={2.4}>
-          <KPI title="Xomashyo sarfi" value={kpis?.today?.xomashyo} unit="kg"
+          <KPI title="Xomashyo miqdori" value={kpis?.today?.xomashyo} unit="kg"
             icon={<Inventory fontSize="small" />} c={C.teal} loading={loading} />
         </Grid>
         <Grid item xs={2.4}>
-          <KPI title="Kraska sarfi" value={kpis?.today?.kraska} unit="kg"
+          <KPI title="Kraska miqdori" value={kpis?.today?.kraska} unit="kg"
             icon={<Palette fontSize="small" />} c={C.purple} loading={loading} />
         </Grid>
       </Grid>
@@ -279,11 +279,11 @@ const Dashboard = () => {
             icon={<AccessTime fontSize="small" />} c={C.orange} loading={loading} />
         </Grid>
         <Grid item xs={2.4}>
-          <KPI title="Xomashyo sarfi" value={kpis?.month?.xomashyo} unit="kg"
+          <KPI title="Xomashyo miqdori" value={kpis?.month?.xomashyo} unit="kg"
             icon={<Inventory fontSize="small" />} c={C.teal} loading={loading} />
         </Grid>
         <Grid item xs={2.4}>
-          <KPI title="Kraska sarfi" value={kpis?.month?.kraska} unit="kg"
+          <KPI title="Kraska miqdori" value={kpis?.month?.kraska} unit="kg"
             icon={<Palette fontSize="small" />} c={C.purple} loading={loading} />
         </Grid>
       </Grid>
