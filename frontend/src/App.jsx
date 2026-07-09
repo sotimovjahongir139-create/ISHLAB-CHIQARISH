@@ -9,21 +9,24 @@ import { AuthProvider } from './context/AuthContext';
 import { router } from './routes';
 import theme from './theme';
 import VersionChecker from './components/VersionChecker';
+import ErrorBoundary from './components/ErrorBoundary';
 
 dayjs.locale(uzLatn);
 
 const App = () => (
-  <ThemeProvider theme={theme}>
-    <CssBaseline />
-    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uz-latn">
-      <SnackbarProvider maxSnack={4} anchorOrigin={{ vertical: 'top', horizontal: 'right' }} autoHideDuration={3500}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-        </AuthProvider>
-        <VersionChecker />
-      </SnackbarProvider>
-    </LocalizationProvider>
-  </ThemeProvider>
+  <ErrorBoundary>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uz-latn">
+        <SnackbarProvider maxSnack={4} anchorOrigin={{ vertical: 'top', horizontal: 'right' }} autoHideDuration={3500}>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+          <VersionChecker />
+        </SnackbarProvider>
+      </LocalizationProvider>
+    </ThemeProvider>
+  </ErrorBoundary>
 );
 
 export default App;

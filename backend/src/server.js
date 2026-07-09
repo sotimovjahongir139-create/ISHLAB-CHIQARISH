@@ -31,6 +31,16 @@ const start = async () => {
   }
 };
 
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL uncaughtException]', new Date().toISOString(), err);
+  // Keep server running — do not exit
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL unhandledRejection]', new Date().toISOString(), reason);
+  // Keep server running — do not exit
+});
+
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down...');
   await prisma.$disconnect();

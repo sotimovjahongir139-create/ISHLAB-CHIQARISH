@@ -1,18 +1,15 @@
 import {
   Box, Card, CardContent, Typography, Button, ButtonGroup,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  CircularProgress, Alert, Chip, Tabs, Tab,
+  CircularProgress, Tabs, Tab,
 } from '@mui/material';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
+import { Refresh } from '@mui/icons-material';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as sifatSvc from '../../services/sifat.service';
-import { CHART_COLORS } from '../../constants';
 
 const pad = (n) => String(n).padStart(2, '0');
 const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fmtDisplay = (iso) => (iso ? iso.split('-').reverse().join('.') : '—');
 
 const getPeriodDates = (period) => {
   const today = new Date();
@@ -59,7 +56,7 @@ const BrakDinamikasi = () => {
         setBrakData(r.data?.data || null);
       }
     } catch {
-      setError("Sifat tizimiga ulanib bo'lmadi — qayta urinib ko'ring");
+      setError("Sifat tizimi hozir mavjud emas");
     } finally {
       setLoading(false);
     }
@@ -67,79 +64,35 @@ const BrakDinamikasi = () => {
 
   useEffect(() => {
     loadData();
-    const id = setInterval(loadData, 5 * 60 * 1000);
+    const id = setInterval(loadData, 60 * 1000);
     return () => clearInterval(id);
   }, [loadData]);
 
-  // Filter datasets by selected category tab
-  const filteredDatasets = useMemo(() => {
+  const tableRows = useMemo(() => {
     if (!brakData?.datasets) return [];
     const catKey = CATEGORIES[catTab].key;
-    return brakData.datasets.filter((ds) =>
-      ds.sku.toLowerCase().includes(catKey)
-    );
-  }, [brakData, catTab]);
-
-  const chartData = useMemo(() => {
-    if (!filteredDatasets.length) return [];
-    const allDates = [
-      ...new Set(filteredDatasets.flatMap((ds) => ds.data.map((d) => d.date))),
-    ].sort();
-    return allDates.map((date) => {
-      const row = { date };
-      for (const ds of filteredDatasets) {
-        const pt = ds.data.find((d) => d.date === date);
-        row[ds.sku] = pt?.brak ?? 0;
-      }
-      return row;
-    });
-  }, [filteredDatasets]);
-
-  // Table rows: only brak > 0, sorted date desc
-  const tableRows = useMemo(() => {
-    return filteredDatasets
+    return brakData.datasets
+      .filter((ds) => ds.sku.toLowerCase().includes(catKey))
       .flatMap((ds) => ds.data.map((d) => ({ sku: ds.sku, ...d })))
       .filter((r) => r.brak > 0)
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [filteredDatasets]);
-
-  const skus = filteredDatasets.map((ds) => ds.sku);
-  const { totalBrak, totalFakt } = brakData?.summary || {};
-
-  const CustomTooltip = useCallback(
-    ({ active, payload, label }) => {
-      if (!active || !payload?.length) return null;
-      return (
-        <Box sx={{ bgcolor: 'background.paper', p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, fontSize: 12 }}>
-          <Typography variant="caption" fontWeight={700} display="block" mb={0.5}>{label}</Typography>
-          {payload.map((p) => {
-            const ds = filteredDatasets.find((d) => d.sku === p.name);
-            const pt = ds?.data.find((d) => d.date === label);
-            return (
-              <Box key={p.name} mb={0.3}>
-                <Box component="span" sx={{ color: p.color, fontWeight: 700 }}>{p.name}</Box>
-                {' · '}Brak: <b>{p.value}</b>
-                {pt ? (
-                  <>
-                    {' · '}Fakt: <b>{pt.fakt || '—'}</b>
-                    {' · '}Foiz: <b>{pt.fakt > 0 ? `${pt.foiz}%` : '—'}</b>
-                  </>
-                ) : null}
-              </Box>
-            );
-          })}
-        </Box>
-      );
-    },
-    [filteredDatasets]
-  );
+  }, [brakData, catTab]);
 
   return (
     <Card sx={{ mb: 2.5 }}>
-      <CardContent>
-        {/* Header row */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700}>Brak dinamikasi</Typography>
+      <CardContent sx={{ pb: '12px !important' }}>
+        {/* Header: tabs LEFT, period buttons RIGHT */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mr: 1 }}>Brak dinamikasi</Typography>
+            <Tabs
+              value={catTab}
+              onChange={(_, v) => setCatTab(v)}
+              sx={{ minHeight: 32, '& .MuiTab-root': { minHeight: 32, py: 0.5, fontSize: '0.8rem' } }}
+            >
+              {CATEGORIES.map((c) => <Tab key={c.key} label={c.label} />)}
+            </Tabs>
+          </Box>
           <ButtonGroup size="small">
             <Button variant={period === 'haftalik' ? 'contained' : 'outlined'} onClick={() => setPeriod('haftalik')}>
               Haftalik
@@ -152,95 +105,56 @@ const BrakDinamikasi = () => {
 
         {loading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 3 }}>
-            <CircularProgress size={22} />
-            <Typography color="text.secondary">Yuklanmoqda...</Typography>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="text.secondary">Yuklanmoqda...</Typography>
           </Box>
         )}
 
-        {!loading && error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-
-        {!loading && !error && brakData && (
-          <>
-            {/* Summary badges */}
-            <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-              <Chip label={`Jami brak: ${totalBrak ?? 0} dona`} color="error" variant="outlined" />
-              <Chip label={`Jami fakt: ${totalFakt ?? 0} dona`} color="primary" variant="outlined" />
-            </Box>
-
-            {/* Category tabs */}
-            <Tabs
-              value={catTab}
-              onChange={(_, v) => setCatTab(v)}
-              sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
-            >
-              {CATEGORIES.map((c) => <Tab key={c.key} label={c.label} />)}
-            </Tabs>
-
-            {/* Line chart */}
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} domain={[0, 'auto']} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  {skus.map((sku, i) => (
-                    <Line
-                      key={sku}
-                      type="monotone"
-                      dataKey={sku}
-                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                      dot={{ r: 3 }}
-                      activeDot={{ r: 5 }}
-                      strokeWidth={2}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <Typography color="text.secondary" sx={{ py: 2 }}>
-                {CATEGORIES[catTab].label} bo'yicha ma'lumot topilmadi
-              </Typography>
-            )}
-
-            {/* Table — only rows with brak > 0 */}
-            {tableRows.length > 0 && (
-              <TableContainer sx={{ mt: 2, maxHeight: 260 }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Sana</TableCell>
-                      <TableCell>Model</TableCell>
-                      <TableCell align="right">Fakt</TableCell>
-                      <TableCell align="right">Brak</TableCell>
-                      <TableCell align="right">Foiz %</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableRows.map((row, i) => (
-                      <TableRow key={i} hover>
-                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{row.date}</TableCell>
-                        <TableCell sx={{ fontSize: 12 }}>{row.sku}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12 }}>{row.fakt > 0 ? row.fakt : '—'}</TableCell>
-                        <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600, color: 'error.main' }}>{row.brak}</TableCell>
-                        <TableCell align="right">
-                          {row.fakt > 0
-                            ? <Typography variant="caption" fontWeight={700} sx={{ color: foizColor(row.foiz) }}>{row.foiz}%</Typography>
-                            : <Typography variant="caption" color="text.secondary">—</Typography>
-                          }
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </>
+        {!loading && error && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 2 }}>
+            <Typography variant="body2" color="text.secondary">{error}</Typography>
+            <Button size="small" startIcon={<Refresh />} onClick={loadData}>Qayta urinish</Button>
+          </Box>
         )}
 
-        {!loading && !error && !brakData && (
-          <Typography color="text.secondary" sx={{ py: 2 }}>Ma'lumot topilmadi</Typography>
+        {!loading && !error && (
+          <TableContainer sx={{ maxHeight: 320 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Sana</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Model</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Fakt</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Brak</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Foiz %</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tableRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary', fontSize: 13 }}>
+                      {CATEGORIES[catTab].label} bo'yicha brak ma'lumoti topilmadi
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tableRows.map((row, i) => (
+                    <TableRow key={i} hover>
+                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDisplay(row.date)}</TableCell>
+                      <TableCell sx={{ fontSize: 12 }}>{row.sku}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12 }}>{row.fakt > 0 ? row.fakt : '—'}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 12, fontWeight: 700, color: 'error.main' }}>{row.brak}</TableCell>
+                      <TableCell align="right">
+                        {row.fakt > 0
+                          ? <Typography variant="caption" fontWeight={700} sx={{ color: foizColor(row.foiz) }}>{row.foiz}%</Typography>
+                          : <Typography variant="caption" color="text.secondary">—</Typography>
+                        }
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </CardContent>
     </Card>
