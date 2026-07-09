@@ -2,10 +2,8 @@ const prisma = require('../../config/database');
 
 const SIFAT_BASE = process.env.SIFAT_API_URL || 'https://sifat.arkon-group.uz';
 
-// Extract numeric part from Sifat SKU
-// Primary: split by " - " and find the pure-numeric segment
-// "Padosh - 9092 - qora" → split → ["Padosh", "9092", "qora"] → "9092"
-// Fallback: first 3-5 digit sequence via regex
+// Extract numeric part from Sifat SKU (primary: split by " - ", fallback: regex)
+// "Padosh - 9092 - qora" → "9092"
 const extractSkuNum = (sku) => {
   const parts = String(sku || '').split(' - ');
   const numPart = parts.find((p) => /^\d+$/.test(p.trim()));
@@ -14,11 +12,28 @@ const extractSkuNum = (sku) => {
   return m ? m[1] : null;
 };
 
+// Extract category word from Sifat SKU (first segment before " - ")
+// "Padosh - 9092 - qora" → "padosh"
+// "Stilka - 6668 - ko'k" → "stilka"
+const extractSkuCategory = (sku) => {
+  const first = String(sku || '').split(' - ')[0].trim().toLowerCase();
+  return ['padosh', 'stilka'].includes(first) ? first : null;
+};
+
 // Local-timezone-safe date string — avoids toISOString() UTC shift
 const pad = (n) => String(n).padStart(2, '0');
 const dateToStr = (d) => {
   if (!(d instanceof Date)) return String(d).slice(0, 10);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+// Subtract 1 day from a YYYY-MM-DD string, returns YYYY-MM-DD
+// Parses as local midnight to avoid UTC-shift issues
+const subtractOneDay = (dateStr) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d); // local midnight
+  date.setDate(date.getDate() - 1);
+  return dateToStr(date);
 };
 
 // Module-level token cache
@@ -52,9 +67,7 @@ async function getSifatToken() {
   throw lastErr || new Error('Login failed after retries');
 }
 
-// Authenticated fetch with:
-//   - 401 handling: clear token + re-auth + retry once
-//   - Network retry: 3 attempts, 2s between each
+// Authenticated fetch with 401 re-auth and 3-attempt network retry
 async function sifatFetch(url) {
   const token = await getSifatToken();
   let lastErr;
@@ -90,8 +103,7 @@ async function getBrakDinamikasi(startDate, endDate) {
     console.log('[Sifat] raw defect sample:', JSON.stringify(defects[0]));
   }
 
-  // Group brak by sku + date
-  // Normalize date to YYYY-MM-DD regardless of Sifat format (datetime, etc.)
+  // Group brak by sku + date (normalize date to YYYY-MM-DD)
   const bySkuDate = {};
   for (const d of defects) {
     const rawDate =
@@ -112,10 +124,11 @@ async function getBrakDinamikasi(startDate, endDate) {
     bySkuDate[sku][date] = (bySkuDate[sku][date] || 0) + brak;
   }
 
-  // Fetch all facts in date range
+  // Fetch all facts — extend range by 1 day back to cover date-shift lookups
+  const faktStartDate = subtractOneDay(startDate);
   const facts = await prisma.productionFact.findMany({
     where: {
-      factDate: { gte: new Date(startDate), lte: new Date(endDate) },
+      factDate: { gte: new Date(faktStartDate), lte: new Date(endDate) },
     },
     select: {
       factDate: true,
@@ -124,8 +137,7 @@ async function getBrakDinamikasi(startDate, endDate) {
     },
   });
 
-  // Build factsByDate: { '2026-07-06': [{ modelName: '9092 padosh', qty: 150 }, ...] }
-  // Uses local-timezone dateToStr to avoid UTC-shift mismatches
+  // Build factsByDate: { '2026-07-05': [{ modelName: '9092 padosh', qty: 150 }] }
   const factsByDate = {};
   for (const f of facts) {
     const date = dateToStr(f.factDate);
@@ -136,27 +148,39 @@ async function getBrakDinamikasi(startDate, endDate) {
     });
   }
 
-  // Lookup: sum produced_qty where modelName includes the extracted number
-  // Equivalent to: SELECT SUM(produced_qty) WHERE model.name LIKE '%9092%' AND date = X
-  const lookupFakt = (num, date) => {
-    if (!num || !factsByDate[date]) return 0;
-    return factsByDate[date]
-      .filter((f) => f.modelName.includes(num))
+  // Lookup fakt for a brak record:
+  //   - brakDate: the date the brak was recorded
+  //   - faktDate: one day BEFORE brakDate (production happened before defect is logged)
+  //   - matches: modelName.includes(num) AND modelName.includes(category)
+  //   Equivalent SQL: WHERE fact_date = faktDate AND name LIKE '%9092%' AND name ILIKE '%padosh%'
+  const lookupFakt = (num, category, brakDate) => {
+    const faktDate = subtractOneDay(brakDate);
+    if (!num || !factsByDate[faktDate]) return { fakt: 0, faktDate };
+    const fakt = factsByDate[faktDate]
+      .filter((f) => {
+        const name = f.modelName.toLowerCase();
+        const hasNum = name.includes(num);
+        const hasCat = !category || name.includes(category);
+        return hasNum && hasCat;
+      })
       .reduce((sum, f) => sum + f.qty, 0);
+    return { fakt, faktDate };
   };
 
-  // Build datasets with per-row fakt lookup and debug log
+  // Build datasets with per-row debug log
   const rawDatasets = Object.entries(bySkuDate).map(([sku, dateMap]) => {
     const num = extractSkuNum(sku);
+    const category = extractSkuCategory(sku);
     const data = Object.entries(dateMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, brak]) => {
-        const fakt = lookupFakt(num, date);
+        const { fakt, faktDate } = lookupFakt(num, category, date);
         const foiz = fakt > 0 ? Math.round((brak / fakt) * 10000) / 100 : 0;
         console.log('[FAKT]', {
-          sku,
-          date,
+          skuDate: date,
+          faktLookupDate: faktDate,
           extracted: num,
+          category,
           faktFound: fakt,
           brak,
           foiz: fakt > 0 ? `${foiz}%` : '—',
@@ -166,7 +190,6 @@ async function getBrakDinamikasi(startDate, endDate) {
     return { sku, data };
   });
 
-  // Only keep SKUs that have at least one brak > 0
   const datasets = rawDatasets.filter((ds) => ds.data.some((d) => d.brak > 0));
 
   let totalBrak = 0, totalFakt = 0, foizSum = 0, foizCount = 0;

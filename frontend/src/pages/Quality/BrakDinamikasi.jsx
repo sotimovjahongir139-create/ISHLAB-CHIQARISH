@@ -37,6 +37,15 @@ const CATEGORIES = [
   { key: 'stilka', label: 'Stilka' },
 ];
 
+const HDR = {
+  fontWeight: 600,
+  fontSize: 13,
+  bgcolor: '#f8f9fa',
+  py: '12px',
+  px: '16px',
+  borderBottom: '2px solid #e0e0e0',
+};
+
 const BrakDinamikasi = () => {
   const [period, setPeriod] = useState('haftalik');
   const [catTab, setCatTab] = useState(0);
@@ -45,7 +54,6 @@ const BrakDinamikasi = () => {
   const [retrying, setRetrying] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState('');
-  // Ref tracks whether we've ever had good data — safe to read in stale closures
   const hasData = useRef(false);
 
   const loadData = useCallback(async (isManual = false) => {
@@ -55,24 +63,16 @@ const BrakDinamikasi = () => {
     try {
       const r = await sifatSvc.getBrakDinamikasi({ startDate, endDate });
       if (r.data?.error) {
-        if (hasData.current) {
-          // Keep showing old data, show small stale warning
-          setStale(true);
-        } else {
-          setError(r.data.error);
-        }
+        if (hasData.current) setStale(true);
+        else setError(r.data.error);
       } else {
-        const data = r.data?.data || null;
-        setBrakData(data);
+        setBrakData(r.data?.data || null);
         hasData.current = true;
         setError('');
       }
     } catch {
-      if (hasData.current) {
-        setStale(true);
-      } else {
-        setError('Sifat tizimi hozir mavjud emas');
-      }
+      if (hasData.current) setStale(true);
+      else setError('Sifat tizimi hozir mavjud emas');
     } finally {
       setLoading(false);
       if (isManual) setRetrying(false);
@@ -80,14 +80,12 @@ const BrakDinamikasi = () => {
   }, [period]);
 
   useEffect(() => {
-    // Reset fully on period change
     setLoading(true);
     setBrakData(null);
     setError('');
     setStale(false);
     hasData.current = false;
     loadData();
-    // Silent auto-retry every 2 minutes — no UI flicker
     const id = setInterval(() => loadData(false), 2 * 60 * 1000);
     return () => clearInterval(id);
   }, [loadData]);
@@ -135,7 +133,7 @@ const BrakDinamikasi = () => {
           </ButtonGroup>
         </Box>
 
-        {/* Initial load spinner — only when no data yet */}
+        {/* Initial load spinner */}
         {loading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 3 }}>
             <CircularProgress size={20} />
@@ -143,7 +141,7 @@ const BrakDinamikasi = () => {
           </Box>
         )}
 
-        {/* Full error — shown only when no data at all */}
+        {/* Full error — no data at all */}
         {!loading && error && !brakData && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 2 }}>
             <Typography variant="body2" color="text.secondary">{error}</Typography>
@@ -158,7 +156,7 @@ const BrakDinamikasi = () => {
           </Box>
         )}
 
-        {/* Stale warning — fetch failed but old data still shown below */}
+        {/* Stale warning — old data still shown in table below */}
         {!loading && stale && brakData && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
             <WarningAmber sx={{ fontSize: 14, color: 'warning.main' }} />
@@ -179,15 +177,15 @@ const BrakDinamikasi = () => {
 
         {/* Table — visible whenever we have data (fresh or stale) */}
         {!loading && brakData && (
-          <TableContainer sx={{ maxHeight: 320 }}>
-            <Table size="small" stickyHeader>
+          <TableContainer sx={{ minHeight: 400, maxHeight: 600, overflow: 'auto' }}>
+            <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Sana</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Model</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Fakt</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Brak</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12 }}>Foiz %</TableCell>
+                  <TableCell sx={{ ...HDR, width: 160 }}>Sana</TableCell>
+                  <TableCell sx={{ ...HDR }}>Model</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Fakt</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Brak</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Foiz %</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -196,35 +194,44 @@ const BrakDinamikasi = () => {
                     <TableCell
                       colSpan={5}
                       align="center"
-                      sx={{ py: 3, color: 'text.secondary', fontSize: 13 }}
+                      sx={{ py: 6, color: 'text.secondary', fontSize: 14 }}
                     >
                       {CATEGORIES[catTab].label} bo'yicha brak ma'lumoti topilmadi
                     </TableCell>
                   </TableRow>
                 ) : (
                   tableRows.map((row, i) => (
-                    <TableRow key={i} hover>
-                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>
+                    <TableRow
+                      key={i}
+                      sx={{
+                        height: 52,
+                        '&:hover td': { bgcolor: '#f0f4ff' },
+                        '& td': { borderBottom: '1px solid #f0f0f0' },
+                      }}
+                    >
+                      <TableCell sx={{ whiteSpace: 'nowrap', fontSize: 15, px: '16px' }}>
                         {fmtDisplay(row.date)}
                       </TableCell>
-                      <TableCell sx={{ fontSize: 12 }}>{row.sku}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: 12 }}>
+                      <TableCell sx={{ fontSize: 15, px: '16px' }}>{row.sku}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: 15, px: '16px' }}>
                         {row.fakt > 0 ? row.fakt : '—'}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: 12, fontWeight: 700, color: 'error.main' }}>
+                      <TableCell
+                        align="right"
+                        sx={{ fontSize: 16, fontWeight: 700, color: 'error.main', px: '16px' }}
+                      >
                         {row.brak}
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="right" sx={{ px: '16px' }}>
                         {row.fakt > 0 ? (
                           <Typography
-                            variant="caption"
                             fontWeight={700}
-                            sx={{ color: foizColor(row.foiz) }}
+                            sx={{ fontSize: 15, color: foizColor(row.foiz) }}
                           >
                             {row.foiz}%
                           </Typography>
                         ) : (
-                          <Typography variant="caption" color="text.secondary">—</Typography>
+                          <Typography sx={{ fontSize: 15 }} color="text.secondary">—</Typography>
                         )}
                       </TableCell>
                     </TableRow>
