@@ -1,11 +1,46 @@
 import {
-  Box, Typography, Card, CardContent, Button, Chip,
+  Box, Typography, Card, CardContent, Button, ButtonGroup, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem, Grid, IconButton, Tooltip,
 } from '@mui/material';
 import { Refresh, Delete, Save, ColorLens } from '@mui/icons-material';
+
+const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const getPeriodDates = (period) => {
+  const now = new Date();
+  if (period === 'kunlik') {
+    const y = new Date(now); y.setDate(now.getDate() - 1); y.setHours(0, 0, 0, 0);
+    return { dateFrom: fmtDate(y), dateTo: fmtDate(y) };
+  }
+  if (period === 'haftalik') {
+    const d = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { dateFrom: fmtDate(mon), dateTo: fmtDate(sun) };
+  }
+  if (period === 'oylik') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    };
+  }
+  if (period === 'otgan_oy') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+  return {};
+};
+const PERIODS = [
+  { key: 'kunlik', label: 'Kunlik' },
+  { key: 'haftalik', label: 'Haftalik' },
+  { key: 'oylik', label: 'Oylik' },
+  { key: 'otgan_oy', label: "O'tgan oy" },
+];
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/paint.service';
@@ -27,6 +62,7 @@ const Paint = () => {
   const [entry, setEntry] = useState(EMPTY_ENTRY);
   const [entryError, setEntryError] = useState(null);
   const [entrySaving, setEntrySaving] = useState(false);
+  const [period, setPeriod] = useState('oylik');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
 
   const loadLookups = useCallback(async () => {
@@ -40,6 +76,9 @@ const Paint = () => {
     setLoading(true);
     try {
       const params = { page: page + 1, limit: 20 };
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
       const r = await svc.getPaintRecords(params);
       setRecords(r.data.data);
       setTotal(r.data.pagination.total);
@@ -47,10 +86,10 @@ const Paint = () => {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [page]);
+  }, [page, period]);
 
   useEffect(() => { loadLookups(); }, []);
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => { load(); }, [page, period]);
 
   const setE = (key) => (e) => { setEntry((f) => ({ ...f, [key]: e.target.value })); setEntryError(null); };
 
@@ -167,6 +206,21 @@ const Paint = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Period filter buttons */}
+      <Box sx={{ mb: 1.5 }}>
+        <ButtonGroup size="small">
+          {PERIODS.map((p) => (
+            <Button
+              key={p.key}
+              variant={period === p.key ? 'contained' : 'outlined'}
+              onClick={() => { setPeriod(p.key); setPage(0); }}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </Box>
 
       <Card>
         <TableContainer>

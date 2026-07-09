@@ -29,7 +29,13 @@ const getPlans = async (query) => {
   const { page, limit, skip } = getPagination(query);
   const where = { isDeleted: false };
 
-  if (query.date) where.planDate = new Date(query.date);
+  if (query.date) {
+    where.planDate = new Date(query.date);
+  } else if (query.dateFrom || query.dateTo) {
+    where.planDate = {};
+    if (query.dateFrom) where.planDate.gte = new Date(query.dateFrom);
+    if (query.dateTo) where.planDate.lte = new Date(query.dateTo);
+  }
   if (query.lineId) where.productionLineId = query.lineId;
   if (query.modelId) where.productModelId = query.modelId;
   if (query.shiftId) where.shiftId = query.shiftId;

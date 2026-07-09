@@ -12,18 +12,26 @@ const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const fmtDisplay = (iso) => (iso ? iso.split('-').reverse().join('.') : '—');
 
 const getPeriodDates = (period) => {
-  const today = new Date();
+  const now = new Date();
   if (period === 'haftalik') {
-    const day = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+    const d = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     return { startDate: fmt(monday), endDate: fmt(sunday) };
   }
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  return { startDate: fmt(firstDay), endDate: fmt(lastDay) };
+  if (period === 'otgan_oy') {
+    return {
+      startDate: fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      endDate: fmt(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+  // oylik (default)
+  return {
+    startDate: fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
+    endDate: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
 };
 
 const foizColor = (foiz) => {
@@ -118,18 +126,19 @@ const BrakDinamikasi = () => {
             </Tabs>
           </Box>
           <ButtonGroup size="small">
-            <Button
-              variant={period === 'haftalik' ? 'contained' : 'outlined'}
-              onClick={() => setPeriod('haftalik')}
-            >
-              Haftalik
-            </Button>
-            <Button
-              variant={period === 'oylik' ? 'contained' : 'outlined'}
-              onClick={() => setPeriod('oylik')}
-            >
-              Oylik
-            </Button>
+            {[
+              { key: 'haftalik', label: 'Haftalik' },
+              { key: 'oylik', label: 'Oylik' },
+              { key: 'otgan_oy', label: "O'tgan oy" },
+            ].map((p) => (
+              <Button
+                key={p.key}
+                variant={period === p.key ? 'contained' : 'outlined'}
+                onClick={() => setPeriod(p.key)}
+              >
+                {p.label}
+              </Button>
+            ))}
           </ButtonGroup>
         </Box>
 
@@ -178,14 +187,14 @@ const BrakDinamikasi = () => {
         {/* Table — visible whenever we have data (fresh or stale) */}
         {!loading && brakData && (
           <TableContainer sx={{ minHeight: 400, maxHeight: 600, overflow: 'auto' }}>
-            <Table stickyHeader>
+            <Table stickyHeader sx={{ tableLayout: 'fixed', width: '100%' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ ...HDR, width: 160 }}>Sana</TableCell>
+                  <TableCell sx={{ ...HDR, width: 130 }}>Sana</TableCell>
                   <TableCell sx={{ ...HDR }}>Model</TableCell>
-                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Fakt</TableCell>
-                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Brak</TableCell>
-                  <TableCell align="right" sx={{ ...HDR, width: 120 }}>Foiz %</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 100 }}>Fakt</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 100 }}>Brak</TableCell>
+                  <TableCell align="right" sx={{ ...HDR, width: 110 }}>Foiz %</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

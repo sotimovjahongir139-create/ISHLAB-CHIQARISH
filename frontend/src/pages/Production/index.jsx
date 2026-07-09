@@ -1,5 +1,5 @@
 import {
-  Box, Typography, Grid, Card, CardContent, Button, Chip,
+  Box, Typography, Grid, Card, CardContent, Button, ButtonGroup, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, TextField, ToggleButtonGroup, ToggleButton,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -22,6 +22,44 @@ import usePermission from '../../hooks/usePermission';
 const EMPTY_PLAN = { planDate: '', plannedQty: '', faktQty: '', productionLineId: '', productModelId: '', notes: '', planType: 'TEP' };
 const EMPTY_FACT = { factDate: '', producedQty: '', defectQty: '', productionLineId: '', productModelId: '', planId: '', startTime: '', endTime: '', notes: '' };
 
+const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+const getPeriodDates = (period) => {
+  const now = new Date();
+  if (period === 'kunlik') {
+    const y = new Date(now); y.setDate(now.getDate() - 1); y.setHours(0, 0, 0, 0);
+    const ye = new Date(y); ye.setHours(23, 59, 59, 999);
+    return { dateFrom: fmtDate(y), dateTo: fmtDate(ye) };
+  }
+  if (period === 'haftalik') {
+    const d = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1)); mon.setHours(0, 0, 0, 0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23, 59, 59, 999);
+    return { dateFrom: fmtDate(mon), dateTo: fmtDate(sun) };
+  }
+  if (period === 'oylik') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)),
+    };
+  }
+  if (period === 'otgan_oy') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)),
+    };
+  }
+  return {};
+};
+
+const PERIODS = [
+  { key: 'kunlik', label: 'Kunlik' },
+  { key: 'haftalik', label: 'Haftalik' },
+  { key: 'oylik', label: 'Oylik' },
+  { key: 'otgan_oy', label: "O'tgan oy" },
+];
+
 const Production = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { can, hasRole } = usePermission();
@@ -34,6 +72,8 @@ const Production = () => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+
+  const [period, setPeriod] = useState('oylik');
 
   // Filters (dual-use: table filter + quick-entry context)
   const [filters, setFilters] = useState({ lineId: '', modelId: '' });
@@ -63,7 +103,10 @@ const Production = () => {
   const loadPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: page + 1, limit: 15, planType: 'TEP' };
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      const params = { page: page + 1, limit: 15, planType: 'TEP', sortBy: 'planDate', sortDir: 'desc' };
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
       const r = await svc.getPlans(params);
@@ -72,12 +115,15 @@ const Production = () => {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || err?.message || 'Rejalar yuklanmadi', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [page, filters]);
+  }, [page, filters, period]);
 
   const loadFacts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: page + 1, limit: 15, linePrefix: 'PU' };
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      const params = { page: page + 1, limit: 15, linePrefix: 'PU', sortBy: 'factDate', sortDir: 'desc' };
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
       if (filters.lineId) params.lineId = filters.lineId;
       if (filters.modelId) params.modelId = filters.modelId;
       const r = await svc.getFacts(params);
@@ -86,13 +132,13 @@ const Production = () => {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || err?.message || 'Natijalar yuklanmadi', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [page, filters]);
+  }, [page, filters, period]);
 
   useEffect(() => { loadLookups(); }, []);
   useEffect(() => {
     if (tab === 0) loadPlans();
     else loadFacts();
-  }, [tab, page, filters]);
+  }, [tab, page, filters, period]);
 
   const setFilter = (key) => (e) => {
     setFilters((f) => ({ ...f, [key]: e.target.value }));
@@ -334,6 +380,21 @@ const Production = () => {
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Period filter buttons */}
+      <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <ButtonGroup size="small">
+          {PERIODS.map((p) => (
+            <Button
+              key={p.key}
+              variant={period === p.key ? 'contained' : 'outlined'}
+              onClick={() => { setPeriod(p.key); setPage(0); }}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </Box>
 
       {/* Efficiency chart (facts tab) */}
       {tab === 1 && chartData.length > 0 && (

@@ -1,5 +1,5 @@
 ﻿import {
-  Box, Typography, Card, CardContent, Button, Chip,
+  Box, Typography, Card, CardContent, Button, ButtonGroup, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, CircularProgress, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -7,6 +7,41 @@
 } from '@mui/material';
 import { Add, Refresh, Delete, Edit, DeleteSweep } from '@mui/icons-material';
 import UzDatePicker from '../../components/UzDatePicker';
+
+const pad = (n) => String(n).padStart(2, '0');
+const fmtDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const getPeriodDates = (period) => {
+  const now = new Date();
+  if (period === 'kunlik') {
+    const y = new Date(now); y.setDate(now.getDate() - 1); y.setHours(0, 0, 0, 0);
+    return { dateFrom: fmtDate(y), dateTo: fmtDate(y) };
+  }
+  if (period === 'haftalik') {
+    const d = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (d === 0 ? 6 : d - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { dateFrom: fmtDate(mon), dateTo: fmtDate(sun) };
+  }
+  if (period === 'oylik') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    };
+  }
+  if (period === 'otgan_oy') {
+    return {
+      dateFrom: fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      dateTo: fmtDate(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+  }
+  return {};
+};
+const PERIODS = [
+  { key: 'kunlik', label: 'Kunlik' },
+  { key: 'haftalik', label: 'Haftalik' },
+  { key: 'oylik', label: 'Oylik' },
+  { key: 'otgan_oy', label: "O'tgan oy" },
+];
 import { useState, useEffect, useCallback } from 'react';
 import { useSnackbar } from 'notistack';
 import * as svc from '../../services/waste.service';
@@ -23,7 +58,8 @@ const Waste = () => {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [totalQty, setTotalQty] = useState(0);
-  const [filters, setFilters] = useState({ departmentId: '', dateFrom: '', dateTo: '' });
+  const [period, setPeriod] = useState('oylik');
+  const [filters, setFilters] = useState({ departmentId: '' });
   const [dialog, setDialog] = useState({ open: false, mode: 'create', item: null });
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -38,18 +74,19 @@ const Waste = () => {
     try {
       const params = { page: page + 1, limit: 20 };
       if (filters.departmentId) params.departmentId = filters.departmentId;
-      if (filters.dateFrom) params.dateFrom = filters.dateFrom;
-      if (filters.dateTo) params.dateTo = filters.dateTo;
+      const { dateFrom, dateTo } = getPeriodDates(period);
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
       const r = await svc.getWasteRecords(params);
       setRecords(r.data.data);
       setTotal(r.data.pagination.total);
       setTotalQty(r.data.totalQty || 0);
     } catch (err) { enqueueSnackbar(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi', { variant: 'error' }); }
     finally { setLoading(false); }
-  }, [page, filters]);
+  }, [page, filters, period]);
 
   useEffect(() => { loadDepts(); }, []);
-  useEffect(() => { load(); }, [page, filters]);
+  useEffect(() => { load(); }, [page, filters, period]);
 
   const setFilter = (key) => (e) => { setFilters((f) => ({ ...f, [key]: e.target.value })); setPage(0); };
   const F = (key) => ({ value: form[key], onChange: (e) => setForm((f) => ({ ...f, [key]: e.target.value })) });
@@ -118,28 +155,26 @@ const Waste = () => {
       {/* Filters */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Grid container spacing={1.5} alignItems="center">
-            <Grid item xs={6} sm={3}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>Bo'lim</InputLabel>
-                <Select value={filters.departmentId} label="Bo'lim" onChange={setFilter('departmentId')}>
-                  <MenuItem value="">Barchasi</MenuItem>
-                  {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <UzDatePicker label="Dan" value={filters.dateFrom} onChange={setFilter('dateFrom')} />
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <UzDatePicker label="Gacha" value={filters.dateTo} onChange={setFilter('dateTo')} />
-            </Grid>
-            {(filters.departmentId || filters.dateFrom || filters.dateTo) && (
-              <Grid item xs={6} sm={3}>
-                <Button size="small" onClick={() => { setFilters({ departmentId: '', dateFrom: '', dateTo: '' }); setPage(0); }}>Tozalash</Button>
-              </Grid>
-            )}
-          </Grid>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>Bo'lim</InputLabel>
+              <Select value={filters.departmentId} label="Bo'lim" onChange={setFilter('departmentId')}>
+                <MenuItem value="">Barchasi</MenuItem>
+                {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <ButtonGroup size="small">
+              {PERIODS.map((p) => (
+                <Button
+                  key={p.key}
+                  variant={period === p.key ? 'contained' : 'outlined'}
+                  onClick={() => { setPeriod(p.key); setPage(0); }}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </ButtonGroup>
+          </Box>
         </CardContent>
       </Card>
 
