@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { CircularProgress, Box } from '@mui/material';
 import Layout from '../components/Layout';
@@ -56,10 +56,18 @@ const Loading = () => (
 
 const Wrap = ({ element }) => <Suspense fallback={<Loading />}>{element}</Suspense>;
 
+// Department accounts are restricted to /emp-performance only — any other
+// path (typed directly or navigated to) bounces back there.
+const DEPARTMENT_HOME = '/emp-performance';
+
 const PrivateRoute = ({ element }) => {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role?.name === 'department' && pathname !== DEPARTMENT_HOME) {
+    return <Navigate to={DEPARTMENT_HOME} replace />;
+  }
   return element;
 };
 

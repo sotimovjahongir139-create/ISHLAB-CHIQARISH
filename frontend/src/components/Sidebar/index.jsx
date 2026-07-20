@@ -38,6 +38,10 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
 
   const handleNav = (path) => { navigate(path); if (variant === 'temporary') onClose?.(); };
 
+  const visibleNav = hasRole('department')
+    ? NAV.filter((item) => item.path === '/emp-performance')
+    : NAV;
+
   return (
     <Drawer
       variant={variant}
@@ -46,23 +50,28 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
       sx={{
         width: SIDEBAR_WIDTH,
         flexShrink: 0,
-        '& .MuiDrawer-paper': { width: SIDEBAR_WIDTH, boxSizing: 'border-box', bgcolor: '#FFFFFF', color: '#1E293B', borderRight: '1px solid #E2E8F0' },
+        '& .MuiDrawer-paper': {
+          width: SIDEBAR_WIDTH, boxSizing: 'border-box',
+          bgcolor: '#090D18', color: '#E7ECF5',
+          borderRight: '1px solid rgba(148,163,184,0.12)',
+          backgroundImage: 'linear-gradient(180deg, rgba(34,211,238,0.05) 0%, transparent 220px)',
+        },
       }}
     >
       {/* Logo */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box component="img" src="/logo.svg" alt="ARKON" sx={{ width: 38, height: 38 }} />
-        <Typography variant="body1" fontWeight={800} letterSpacing={2} sx={{ color: '#1E293B', fontSize: '1.1rem' }}>
+        <Box component="img" src="/logo.svg" alt="ARKON" sx={{ width: 38, height: 38, filter: 'drop-shadow(0 0 6px rgba(34,211,238,0.5))' }} />
+        <Typography variant="body1" fontWeight={800} letterSpacing={2} sx={{ color: '#E7ECF5', fontSize: '1.1rem' }}>
           ARKON
         </Typography>
       </Box>
 
-      <Divider sx={{ borderColor: '#E2E8F0' }} />
+      <Divider sx={{ borderColor: 'rgba(148,163,184,0.12)' }} />
 
       {/* Nav */}
       <List sx={{ px: 1, py: 1, flexGrow: 1 }}>
-        {NAV.map((item, i) => {
-          if (item.divider) return <Divider key={i} sx={{ my: 1, borderColor: '#E2E8F0' }} />;
+        {visibleNav.map((item, i) => {
+          if (item.divider) return <Divider key={i} sx={{ my: 1, borderColor: 'rgba(148,163,184,0.12)' }} />;
           if (item.roles && !hasRole(...item.roles)) return null;
 
           const active = item.path === '/'
@@ -77,35 +86,36 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
               sx={{
                 borderRadius: 1.5, mb: 0.5, py: 0.85,
                 pl: 1.5,
-                color: active ? '#fff' : '#475569',
-                bgcolor: active ? '#2563EB !important' : 'transparent',
+                color: active ? '#67E8F9' : '#8A97AC',
+                bgcolor: active ? 'rgba(34,211,238,0.12) !important' : 'transparent',
                 borderLeft: '3px solid',
-                borderColor: active ? '#2563EB' : 'transparent',
+                borderColor: active ? '#22D3EE' : 'transparent',
+                boxShadow: active ? 'inset 0 0 0 1px rgba(34,211,238,0.2)' : 'none',
                 transition: 'all 0.15s ease',
                 '&:hover': {
-                  bgcolor: active ? '#2563EB !important' : 'rgba(37,99,235,0.08) !important',
-                  color: active ? '#fff' : '#1E293B',
-                  borderColor: active ? '#2563EB' : 'transparent',
+                  bgcolor: active ? 'rgba(34,211,238,0.16) !important' : 'rgba(148,163,184,0.08) !important',
+                  color: active ? '#67E8F9' : '#E7ECF5',
+                  borderColor: active ? '#22D3EE' : 'transparent',
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 34, color: active ? '#fff' : '#64748B' }}>{item.icon}</ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 34, color: active ? '#22D3EE' : '#64748B' }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 500 : 400, letterSpacing: active ? 0.2 : 0 }} />
             </ListItemButton>
           );
         })}
       </List>
 
-      <Divider sx={{ borderColor: '#E2E8F0' }} />
+      <Divider sx={{ borderColor: 'rgba(148,163,184,0.12)' }} />
 
       {/* User */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: 14 }}>
+        <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', color: '#04141A', fontSize: 14, boxShadow: '0 0 12px rgba(34,211,238,0.45)' }}>
           {user?.firstName?.[0]}{user?.lastName?.[0]}
         </Avatar>
         <Box sx={{ overflow: 'hidden' }}>
-          <Typography variant="body2" fontWeight={600} noWrap>{user?.firstName} {user?.lastName}</Typography>
-          <Typography variant="caption" sx={{ opacity: 0.6 }} noWrap>{user?.role?.displayName}</Typography>
+          <Typography variant="body2" fontWeight={600} noWrap sx={{ color: '#E7ECF5' }}>{user?.firstName} {user?.lastName}</Typography>
+          <Typography variant="caption" sx={{ opacity: 0.7 }} noWrap>{user?.role?.displayName}</Typography>
         </Box>
       </Box>
     </Drawer>

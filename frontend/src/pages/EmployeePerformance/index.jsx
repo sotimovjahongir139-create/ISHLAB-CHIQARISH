@@ -12,6 +12,7 @@ import { useSnackbar } from 'notistack';
 import * as svc from '../../services/emp-performance.service';
 import * as empSvc from '../../services/employee.service';
 import { format } from 'date-fns';
+import { useAuth } from '../../context/AuthContext';
 
 const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const todayStr = () => localDateStr(new Date());
@@ -56,6 +57,10 @@ const EffChip = ({ plannedQty, producedQty }) => {
 
 const EmpPerformance = () => {
   const { enqueueSnackbar } = useSnackbar();
+  const { user } = useAuth();
+  // Department accounts are locked to their own department: the Bo'lim
+  // filter is pre-selected/disabled and Xodim options never leave it.
+  const lockedDeptId = user?.role?.name === 'department' ? (user.departmentId || '') : null;
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -76,19 +81,27 @@ const EmpPerformance = () => {
 
   useEffect(() => {
     Promise.all([
-      empSvc.getEmployees({ status: 'ACTIVE', limit: 200 }),
+      empSvc.getEmployees({ status: 'ACTIVE', limit: 200, ...(lockedDeptId ? { departmentId: lockedDeptId } : {}) }),
       empSvc.getDepartments(),
     ]).then(([eR, dR]) => {
       setEmployees(eR.data.data || []);
       setDepartments(dR.data.data || []);
     }).catch(() => {});
-  }, []);
+  }, [lockedDeptId]);
+
+  // Pre-select (and keep locked to) the department account's own department.
+  useEffect(() => {
+    if (lockedDeptId) setEntry(f => ({ ...f, departmentId: lockedDeptId }));
+  }, [lockedDeptId]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const { startDate, endDate } = getPeriodDates(period);
-      const r = await svc.getEmpPerfRecords({ page: page + 1, limit: 20, startDate, endDate });
+      const r = await svc.getEmpPerfRecords({
+        page: page + 1, limit: 20, startDate, endDate,
+        ...(lockedDeptId ? { departmentId: lockedDeptId } : {}),
+      });
       setRecords(r.data.data || []);
       setTotal(r.data.pagination?.total ?? 0);
       setTotalFakt(r.data.totalFakt || 0);
@@ -96,7 +109,7 @@ const EmpPerformance = () => {
     } catch (err) {
       enqueueSnackbar(err?.response?.data?.message || 'Xatolik', { variant: 'error' });
     } finally { setLoading(false); }
-  }, [page, period]);
+  }, [page, period, lockedDeptId]);
 
   useEffect(() => { setPage(0); }, [period]);
   useEffect(() => { load(); }, [load]);
@@ -182,6 +195,27 @@ const EmpPerformance = () => {
 
   const empById = (id) => employees.find(e => e.id === id) || null;
   const empLabel = (o) => `${o.firstName} ${o.lastName}`;
+  // Bo'lim -> Xodim dependent filtering: no department selected shows everyone.
+  const employeesForDept = (deptId) => deptId ? employees.filter(e => e.departmentId === deptId) : employees;
+
+  const handleDeptChange = (e) => {
+    const deptId = e.target.value;
+    setEntry(f => {
+      const emp = empById(f.employeeId);
+      const stillValid = !f.employeeId || (emp && emp.departmentId === deptId);
+      return { ...f, departmentId: deptId, employeeId: stillValid ? f.employeeId : '' };
+    });
+    setEntryError(null);
+  };
+
+  const handleEditDeptChange = (e) => {
+    const deptId = e.target.value;
+    setEditForm(f => {
+      const emp = empById(f.employeeId);
+      const stillValid = !f.employeeId || (emp && emp.departmentId === deptId);
+      return { ...f, departmentId: deptId, employeeId: stillValid ? f.employeeId : '' };
+    });
+  };
 
   return (
     <Box>
@@ -207,9 +241,9 @@ const EmpPerformance = () => {
       </Box>
 
       {/* Entry row */}
-      <Card sx={{ mb: 1.5 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Grid container spacing={1.5} alignItems="flex-end">
+      <Card sx={{ mb: 2, borderRadius: '14px', boxShadow: '0 2px 10px rgba(15,23,42,0.06)' }}>
+        <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
+          <Grid container spacing={2} alignItems="flex-end">
             <Grid item xs={6} sm={2}>
               <TextField size="small" fullWidth type="date" label="Sana"
                 InputLabelProps={{ shrink: true }} value={entry.date} onChange={setE('date')} />
@@ -217,7 +251,7 @@ const EmpPerformance = () => {
             <Grid item xs={12} sm={2}>
               <Autocomplete
                 size="small"
-                options={employees}
+                options={employeesForDept(entry.departmentId)}
                 getOptionLabel={empLabel}
                 value={empById(entry.employeeId)}
                 onChange={(_, v) => { setEntry(f => ({ ...f, employeeId: v?.id || '' })); setEntryError(null); }}
@@ -227,9 +261,9 @@ const EmpPerformance = () => {
               />
             </Grid>
             <Grid item xs={6} sm={2}>
-              <FormControl size="small" fullWidth>
+              <FormControl size="small" fullWidth disabled={!!lockedDeptId}>
                 <InputLabel>Bo'lim</InputLabel>
-                <Select value={entry.departmentId} label="Bo'lim" onChange={setE('departmentId')}>
+                <Select value={entry.departmentId} label="Bo'lim" onChange={handleDeptChange}>
                   {departments.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -277,7 +311,7 @@ const EmpPerformance = () => {
       </Box>
 
       {/* Table */}
-      <Card>
+      <Card sx={{ borderRadius: '14px', boxShadow: '0 2px 10px rgba(15,23,42,0.06)' }}>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -363,16 +397,16 @@ const EmpPerformance = () => {
                 onChange={(e) => setEditForm(f => ({ ...f, date: e.target.value }))} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl size="small" fullWidth>
+              <FormControl size="small" fullWidth disabled={!!lockedDeptId}>
                 <InputLabel>Bo'lim</InputLabel>
                 <Select value={editForm.departmentId || ''} label="Bo'lim"
-                  onChange={(e) => setEditForm(f => ({ ...f, departmentId: e.target.value }))}>
+                  onChange={handleEditDeptChange}>
                   {departments.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <Autocomplete size="small" options={employees}
+              <Autocomplete size="small" options={employeesForDept(editForm.departmentId)}
                 getOptionLabel={empLabel}
                 value={empById(editForm.employeeId)}
                 onChange={(_, v) => setEditForm(f => ({ ...f, employeeId: v?.id || '' }))}

@@ -18,6 +18,7 @@ const start = async () => {
     logger.info('DB host: ' + (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@').split('@')[1]?.split('/')[0]);
 
     await require('../scripts/migrate')().catch((err) => logger.error('Migration error (non-fatal):', err.message));
+    await require('../scripts/seed-department-accounts')().catch((err) => logger.error('Department account sync error (non-fatal):', err.message));
 
     const redis = getRedis();
     await redis.connect().catch(() => logger.warn('Redis connection skipped'));
