@@ -37,35 +37,36 @@ const getPvfDates = (period) => {
   return { startDate: firstOfMonth.toISOString(), endDate: dayEnd.toISOString() };
 };
 
-// ── Color tokens for KPI cards ───────────────────────────────────────────────
+// ── Color tokens for KPI cards (neon-on-navy accents) ─────────────────────────
 const C = {
-  blue:   { accent: '#2563EB', bg: '#EFF6FF' },
-  green:  { accent: '#16A34A', bg: '#F0FDF4' },
-  orange: { accent: '#E65100', bg: '#FFF3E0' },
-  red:    { accent: '#DC2626', bg: '#FEF2F2' },
-  teal:   { accent: '#0097A7', bg: '#E0F7FA' },
-  indigo: { accent: '#3949AB', bg: '#EEF2FF' },
-  purple: { accent: '#7B1FA2', bg: '#F5F3FF' },
+  blue:   { accent: '#22D3EE', bg: 'rgba(34,211,238,0.14)' },   // cyan
+  green:  { accent: '#34D399', bg: 'rgba(52,211,153,0.14)' },   // green
+  orange: { accent: '#F59E0B', bg: 'rgba(245,158,11,0.14)' },   // amber
+  red:    { accent: '#F43F5E', bg: 'rgba(244,63,94,0.14)' },    // rose
+  teal:   { accent: '#34D399', bg: 'rgba(52,211,153,0.14)' },   // green
+  indigo: { accent: '#3B82F6', bg: 'rgba(59,130,246,0.14)' },   // blue
+  purple: { accent: '#EC4899', bg: 'rgba(236,72,153,0.14)' },   // pink
 };
+
+const MONO_FONT = "'JetBrains Mono', 'Roboto Mono', monospace";
 
 // ── KPI card (compact) ───────────────────────────────────────────────────────
 const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
   <Card sx={{
-    height: '100%', borderLeft: `3px solid ${c.accent}`,
-    transition: 'box-shadow 0.15s ease',
-    '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
+    height: '100%', borderRadius: '14px',
+    '&:hover': { boxShadow: `0 0 22px ${c.accent}2E, 0 10px 28px rgba(0,0,0,0.5)` },
   }}>
-    <CardContent sx={{ p: '14px 16px', '&:last-child': { pb: '14px' } }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.75 }}>
+    <CardContent sx={{ p: '16px 18px', '&:last-child': { pb: '16px' } }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.25 }}>
         <Typography sx={{
           fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
-          fontSize: '10px', color: '#6B7280', lineHeight: 1.3, pr: 0.5,
+          fontSize: '10px', color: '#8A97AC', lineHeight: 1.3, pr: 0.5,
         }}>
           {title}
         </Typography>
         <Box sx={{
-          width: 28, height: 28, borderRadius: 1.5, flexShrink: 0,
-          bgcolor: c.bg, border: `1px solid ${c.accent}28`,
+          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+          bgcolor: c.bg, boxShadow: `0 0 14px ${c.accent}40, inset 0 0 0 1px ${c.accent}33`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.accent,
         }}>
           {icon}
@@ -74,13 +75,14 @@ const KPI = ({ title, value, unit, icon, c = C.blue, loading }) => (
       {loading ? <Skeleton width={66} height={28} /> : (
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
           <Typography sx={{
-            fontSize: '24px', fontWeight: 600, color: '#111827',
+            fontFamily: MONO_FONT,
+            fontSize: '26px', fontWeight: 700, color: '#E7ECF5',
             lineHeight: 1, fontVariantNumeric: 'tabular-nums',
           }}>
             {value !== null && value !== undefined ? Number(value).toLocaleString() : '0'}
           </Typography>
           {unit && (
-            <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>{unit}</Typography>
+            <Typography sx={{ fontFamily: MONO_FONT, fontSize: '13px', color: '#8A97AC' }}>{unit}</Typography>
           )}
         </Box>
       )}
@@ -124,8 +126,9 @@ const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <Box sx={{
-      bgcolor: '#0D1B2A', color: '#E0E8F0', p: '10px 14px', borderRadius: '8px',
-      boxShadow: '0 12px 32px rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.07)',
+      bgcolor: '#0B1220', color: '#E0E8F0', p: '10px 14px', borderRadius: '8px',
+      boxShadow: '0 0 0 1px rgba(34,211,238,0.22), 0 12px 32px rgba(0,0,0,0.55)',
+      border: 'none',
       minWidth: 148, pointerEvents: 'none',
     }}>
       <Typography sx={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', mb: 0.75, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -145,8 +148,8 @@ const ChartTooltip = ({ active, payload, label }) => {
 };
 
 // ── Shared axis + grid style ──────────────────────────────────────────────────
-const axTick = { fontSize: 10, fill: '#64748B' };
-const gridStyle = { stroke: '#E2E8F0' };
+const axTick = { fontSize: 10, fill: '#8A97AC' };
+const gridStyle = { stroke: 'rgba(148,163,184,0.14)' };
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -235,10 +238,10 @@ const Dashboard = () => {
       </Box>
 
       {/* ── Kunlik ko'rsatkichlar ── */}
-      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
+      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#8A97AC', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
         Kunlik ko'rsatkichlar
       </Typography>
-      <Grid container spacing={1} sx={{ mb: 1.25 }}>
+      <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={2.4}>
           <KPI title="Ishlab chiqarish" value={kpis?.today?.produced} unit="dona"
             icon={<Factory fontSize="small" />} c={C.blue} loading={loading} />
@@ -262,10 +265,10 @@ const Dashboard = () => {
       </Grid>
 
       {/* ── Oylik ko'rsatkichlar ── */}
-      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
+      <Typography sx={{ fontSize: '11px', fontWeight: 600, color: '#8A97AC', textTransform: 'uppercase', letterSpacing: '0.8px', mb: 1 }}>
         Oylik ko'rsatkichlar
       </Typography>
-      <Grid container spacing={1} sx={{ mb: 2 }}>
+      <Grid container spacing={2} sx={{ mb: 2.5 }}>
         <Grid item xs={2.4}>
           <KPI title="Ishlab chiqarish" value={kpis?.month?.produced} unit="dona"
             icon={<Factory fontSize="small" />} c={C.blue} loading={loading} />
@@ -322,14 +325,14 @@ const Dashboard = () => {
                     <RTooltip content={<ChartTooltip />} />
                     <Legend verticalAlign="bottom" iconSize={10} height={22}
                       formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-                    <Bar dataKey="planned" name="Reja" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={56}>
+                    <Bar dataKey="planned" name="Reja" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={56}>
                       <LabelList dataKey="planned" position="top"
-                        style={{ fontSize: 10, fontWeight: 700, fill: '#1D4ED8' }}
+                        style={{ fontSize: 10, fontWeight: 700, fontFamily: MONO_FONT, fill: '#60A5FA' }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Bar>
-                    <Bar dataKey="produced" name="Fakt" fill="#93C5FD" radius={[4, 4, 0, 0]} maxBarSize={56}>
+                    <Bar dataKey="produced" name="Fakt" fill="#22D3EE" radius={[4, 4, 0, 0]} maxBarSize={56}>
                       <LabelList dataKey="produced" position="top"
-                        style={{ fontSize: 10, fontWeight: 700, fill: '#2563EB' }}
+                        style={{ fontSize: 10, fontWeight: 700, fontFamily: MONO_FONT, fill: '#67E8F9' }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Bar>
                   </BarChart>
@@ -363,7 +366,7 @@ const Dashboard = () => {
                         const x = cx + (r + 16) * Math.cos(-midAngle * R);
                         const y = cy + (r + 16) * Math.sin(-midAngle * R);
                         return (
-                          <text x={x} y={y} fill="#1e293b" textAnchor="middle"
+                          <text x={x} y={y} fill="#E7ECF5" textAnchor="middle"
                             dominantBaseline="central" fontSize={11} fontWeight={600}>
                             {`${(percent * 100).toFixed(0)}%`}
                           </text>
@@ -390,12 +393,12 @@ const Dashboard = () => {
                   <AreaChart data={trendFormatted} margin={{ top: 5, right: 16, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="g-prod" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.14} />
-                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#22D3EE" stopOpacity={0.28} />
+                        <stop offset="95%" stopColor="#22D3EE" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="g-good" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#16A34A" stopOpacity={0.14} />
-                        <stop offset="95%" stopColor="#16A34A" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#34D399" stopOpacity={0.24} />
+                        <stop offset="95%" stopColor="#34D399" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" {...gridStyle} vertical={false} />
@@ -403,25 +406,25 @@ const Dashboard = () => {
                     <YAxis tick={axTick} axisLine={false} tickLine={false} width={36} />
                     <RTooltip content={<ChartTooltip />} />
                     <Legend iconSize={10} formatter={(v) => <span style={{ fontSize: 11 }}>{v}</span>} />
-                    <Area type="monotone" dataKey="produced" stroke="#2563EB" fill="url(#g-prod)"
+                    <Area type="monotone" dataKey="produced" stroke="#22D3EE" fill="url(#g-prod)"
                       name="Ishlab chiqarilgan" strokeWidth={2.5}
-                      dot={{ r: 2.5, fill: '#2563EB', strokeWidth: 0 }} activeDot={{ r: 5 }}>
+                      dot={{ r: 2.5, fill: '#22D3EE', strokeWidth: 0 }} activeDot={{ r: 5 }}>
                       <LabelList dataKey="produced" position="top"
-                        style={{ fontSize: 9, fill: '#2563EB', fontWeight: 600 }}
+                        style={{ fontSize: 9, fill: '#67E8F9', fontWeight: 600, fontFamily: MONO_FONT }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Area>
-                    <Area type="monotone" dataKey="good" stroke="#16A34A" fill="url(#g-good)"
+                    <Area type="monotone" dataKey="good" stroke="#34D399" fill="url(#g-good)"
                       name="Yaroqli" strokeWidth={2}
-                      dot={{ r: 2.5, fill: '#16A34A', strokeWidth: 0 }} activeDot={{ r: 4 }}>
+                      dot={{ r: 2.5, fill: '#34D399', strokeWidth: 0 }} activeDot={{ r: 4 }}>
                       <LabelList dataKey="good" position="top"
-                        style={{ fontSize: 9, fill: '#16A34A', fontWeight: 600 }}
+                        style={{ fontSize: 9, fill: '#6EE7B7', fontWeight: 600, fontFamily: MONO_FONT }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Area>
-                    <Area type="monotone" dataKey="defects" stroke="#EF4444" fill="none"
+                    <Area type="monotone" dataKey="defects" stroke="#F43F5E" fill="none"
                       name="Nuqsonlar" strokeWidth={2} strokeDasharray="5 3"
-                      dot={{ r: 2.5, fill: '#EF4444', strokeWidth: 0 }} activeDot={{ r: 5 }}>
+                      dot={{ r: 2.5, fill: '#F43F5E', strokeWidth: 0 }} activeDot={{ r: 5 }}>
                       <LabelList dataKey="defects" position="bottom"
-                        style={{ fontSize: 9, fill: '#EF4444', fontWeight: 600 }}
+                        style={{ fontSize: 9, fill: '#FB7185', fontWeight: 600, fontFamily: MONO_FONT }}
                         formatter={(v) => v > 0 ? v.toLocaleString() : ''} />
                     </Area>
                   </AreaChart>
@@ -529,15 +532,15 @@ const Dashboard = () => {
               ) : topDefects.map((d, i) => (
                 <Box key={i} sx={{
                   display: 'flex', alignItems: 'center', gap: 1.5,
-                  p: 1.2, mb: 0.5, bgcolor: '#F8FAFC', borderRadius: 1.5,
-                  border: '1px solid #E2E8F0',
+                  p: 1.2, mb: 0.5, bgcolor: 'rgba(148,163,184,0.05)', borderRadius: 1.5,
+                  border: '1px solid rgba(148,163,184,0.12)',
                 }}>
                   <Box sx={{
                     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                    bgcolor: d.severity === 'CRITICAL' ? '#FEF2F2' : d.severity === 'MAJOR' ? '#FFF3E0' : '#EFF6FF',
+                    bgcolor: d.severity === 'CRITICAL' ? 'rgba(244,63,94,0.16)' : d.severity === 'MAJOR' ? 'rgba(245,158,11,0.16)' : 'rgba(59,130,246,0.16)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 12,
-                    color: d.severity === 'CRITICAL' ? '#DC2626' : d.severity === 'MAJOR' ? '#E65100' : '#2563EB',
+                    fontWeight: 700, fontSize: 12, fontFamily: MONO_FONT,
+                    color: d.severity === 'CRITICAL' ? '#FB7185' : d.severity === 'MAJOR' ? '#FBBF24' : '#60A5FA',
                   }}>
                     {i + 1}
                   </Box>

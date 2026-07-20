@@ -69,6 +69,6 @@ export const TRANSACTION_TYPE = {
   TRANSFER: { label: 'Ko\'chirish', color: 'default' },
 };
 
-export const CHART_COLORS = ['#2563EB', '#0097A7', '#16A34A', '#E65100', '#DC2626', '#6A1B9A', '#F57C00'];
+export const CHART_COLORS = ['#22D3EE', '#3B82F6', '#F59E0B', '#EC4899', '#34D399', '#A78BFA', '#F43F5E'];
 
 export const SIDEBAR_WIDTH = 260;
